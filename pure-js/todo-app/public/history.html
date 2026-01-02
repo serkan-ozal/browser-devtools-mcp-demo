@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Todo History</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>📊 Todo History</h1>
+        <p class="subtitle">View your todo statistics and history</p>
+      </header>
+
+      <div class="stats-section">
+        <div class="stat-card">
+          <h3>Total Added</h3>
+          <span id="totalAdded" class="stat-number">0</span>
+        </div>
+        <div class="stat-card">
+          <h3>Active</h3>
+          <span id="activeCount" class="stat-number">0</span>
+        </div>
+        <div class="stat-card">
+          <h3>Completed</h3>
+          <span id="completedCount" class="stat-number">0</span>
+        </div>
+        <div class="stat-card">
+          <h3>Completion Rate</h3>
+          <span id="completionRate" class="stat-number">0%</span>
+        </div>
+      </div>
+
+      <div class="history-section">
+        <h2>Todo History</h2>
+        <ul id="historyList" class="history-list"></ul>
+      </div>
+
+      <div class="navigation">
+        <a href="index.html" class="navButton">Back to Todo App</a>
+      </div>
+    </div>
+
+    <script src="history.js"></script>
+  </body>
+</html>
