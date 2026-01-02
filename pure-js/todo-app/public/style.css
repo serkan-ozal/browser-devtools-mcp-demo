@@ -512,6 +512,7 @@ header h1 {
     border-radius: 8px;
     font-weight: 600;
     transition: background 0.3s;
+    box-shadow: 1px 5px 5px #8c8c8c;
 }
 
 .navButton:hover {
