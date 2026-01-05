@@ -163,7 +163,6 @@ export function ChartAreaInteractive({
     }
   }, [isMobile]);
 
-  // Use commit data if available, otherwise use default data
   const chartData = React.useMemo(() => {
     if (commitData && commitData.length > 0) {
       return commitData.map((item) => ({
@@ -178,11 +177,9 @@ export function ChartAreaInteractive({
 
   const filteredData = React.useMemo(() => {
     if (hasCommitData) {
-      // Commit verileri için tüm 12 ayı göster
       return chartData;
     }
-    
-    // Default veriler için timeRange filtresi uygula
+
     return chartData.filter((item) => {
       const date = new Date(item.date);
       const referenceDate = new Date();
