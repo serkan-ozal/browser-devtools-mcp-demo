@@ -1,9 +1,43 @@
+import * as React from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import { SearchGithubUser } from "@/components/search-github-user";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 export default function App() {
+  const [activeView, setActiveView] = React.useState<"dashboard" | "chat">(
+    "dashboard"
+  );
+  const [chatOpen, setChatOpen] = React.useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleChatClick = () => {
+    setActiveView("chat");
+    setChatOpen(true);
+  };
+
+  const handleDashboardClick = () => {
+    setActiveView("dashboard");
+    setChatOpen(false);
+    navigate("/");
+  };
+
+  // Update activeView based on current route
+  React.useEffect(() => {
+    if (location.pathname === "/") {
+      setActiveView("dashboard");
+    } else if (
+      location.pathname === "/lifecycle" ||
+      location.pathname === "/analytics" ||
+      location.pathname === "/projects" ||
+      location.pathname === "/team"
+    ) {
+      setActiveView("dashboard");
+      setChatOpen(false);
+    }
+  }, [location.pathname]);
+
   return (
     <SidebarProvider
       style={
@@ -13,18 +47,23 @@ export default function App() {
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
+      <AppSidebar
+        variant="inset"
+        activeView={activeView}
+        onChatClick={handleChatClick}
+        onDashboardClick={handleDashboardClick}
+        currentPath={location.pathname}
+      />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <div className="px-4 lg:px-6">
-                <SearchGithubUser />
-              </div>
-            </div>
-          </div>
-        </div>
+        <Outlet
+          context={{
+            activeView,
+            onViewChange: setActiveView,
+            chatOpen,
+            onChatOpenChange: setChatOpen,
+          }}
+        />
       </SidebarInset>
     </SidebarProvider>
   );

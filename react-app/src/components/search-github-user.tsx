@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CardAction, CardFooter } from "@/components/ui/card";
 import { ChartAreaInteractive } from "@/components/chart-area-interactive";
 import { RepoTable } from "@/components/repo-table";
+import { GitHubChatbot } from "@/components/github-chatbot";
 
 interface GitHubUser {
   login: string;
@@ -463,13 +464,48 @@ async function searchGitHubUsers(
   return data.items;
 }
 
-export function SearchGithubUser() {
+interface SearchGithubUserProps {
+  activeView?: "dashboard" | "chat";
+  onViewChange?: (view: "dashboard" | "chat") => void;
+  chatOpen?: boolean;
+  onChatOpenChange?: (open: boolean) => void;
+}
+
+export function SearchGithubUser({
+  activeView: controlledActiveView,
+  onViewChange,
+  chatOpen: controlledChatOpen,
+  onChatOpenChange,
+}: SearchGithubUserProps = {}) {
   const [username, setUsername] = React.useState("");
   const [searchQuery, setSearchQuery] = React.useState("");
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
   const [showSuggestions, setShowSuggestions] = React.useState(false);
+  const [internalActiveView, setInternalActiveView] = React.useState<
+    "dashboard" | "chat"
+  >("dashboard");
+  const [internalChatOpen, setInternalChatOpen] = React.useState(false);
+
+  const activeView =
+    controlledActiveView !== undefined
+      ? controlledActiveView
+      : internalActiveView;
+  const setActiveView = onViewChange || setInternalActiveView;
+
+  const chatOpen =
+    controlledChatOpen !== undefined ? controlledChatOpen : internalChatOpen;
+  const setChatOpen = onChatOpenChange || setInternalChatOpen;
+
   const inputRef = React.useRef<HTMLInputElement>(null);
   const suggestionsRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (chatOpen) {
+      setActiveView("chat");
+    } else if (activeView === "chat" && !chatOpen) {
+      setActiveView("dashboard");
+    }
+  }, [chatOpen, activeView, setActiveView]);
 
   // Debounce search input
   React.useEffect(() => {
@@ -785,42 +821,49 @@ export function SearchGithubUser() {
 
             <div className="flex flex-col gap-4">
               {/* GitHub Stats Cards */}
-              {codingStats && (
+              {(isLoadingCodingStats ||
+                codingStats ||
+                isLoadingLanguages ||
+                topLanguages) && (
                 <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-                  <Card className="@container/card">
-                    <CardHeader>
-                      <CardDescription>Coder Type</CardDescription>
-                      <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                        {isLoadingCodingStats ? (
-                          <Skeleton className="h-8 w-32" />
-                        ) : (
-                          codingStats.coderType
-                        )}
-                      </CardTitle>
-                      <CardAction>
-                        {!isLoadingCodingStats && (
-                          <Badge variant="outline">
-                            {codingStats.coderType === "Night Coder" ? (
-                              <IconMoon className="size-4" />
-                            ) : (
-                              <IconSun className="size-4" />
-                            )}
-                            {codingStats.coderType === "Night Coder"
-                              ? codingStats.nightPercentage
-                              : codingStats.dayPercentage}
-                            %
-                          </Badge>
-                        )}
-                      </CardAction>
-                    </CardHeader>
-                    <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                      {isLoadingCodingStats ? (
-                        <>
-                          <Skeleton className="h-4 w-full" />
-                          <Skeleton className="h-4 w-3/4" />
-                        </>
-                      ) : (
-                        <>
+                  {/* Coder Type Card */}
+                  {isLoadingCodingStats ? (
+                    <Card className="@container/card">
+                      <CardHeader>
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-8 w-32" />
+                        <CardAction>
+                          <Skeleton className="h-6 w-16" />
+                        </CardAction>
+                      </CardHeader>
+                      <CardFooter className="flex-col items-start gap-1.5 text-sm">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-3/4" />
+                      </CardFooter>
+                    </Card>
+                  ) : (
+                    codingStats && (
+                      <Card className="@container/card">
+                        <CardHeader>
+                          <CardDescription>Coder Type</CardDescription>
+                          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                            {codingStats.coderType}
+                          </CardTitle>
+                          <CardAction>
+                            <Badge variant="outline">
+                              {codingStats.coderType === "Night Coder" ? (
+                                <IconMoon className="size-4" />
+                              ) : (
+                                <IconSun className="size-4" />
+                              )}
+                              {codingStats.coderType === "Night Coder"
+                                ? codingStats.nightPercentage
+                                : codingStats.dayPercentage}
+                              %
+                            </Badge>
+                          </CardAction>
+                        </CardHeader>
+                        <CardFooter className="flex-col items-start gap-1.5 text-sm">
                           <div className="line-clamp-1 flex gap-2 font-medium">
                             {codingStats.coderType === "Night Coder"
                               ? "Most active during night"
@@ -835,38 +878,42 @@ export function SearchGithubUser() {
                             {codingStats.nightCommits + codingStats.dayCommits}{" "}
                             total commits analyzed
                           </div>
-                        </>
-                      )}
-                    </CardFooter>
-                  </Card>
+                        </CardFooter>
+                      </Card>
+                    )
+                  )}
 
-                  <Card className="@container/card">
-                    <CardHeader>
-                      <CardDescription>Night Coding</CardDescription>
-                      <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                        {isLoadingCodingStats ? (
-                          <Skeleton className="h-8 w-16" />
-                        ) : (
-                          `${codingStats.nightPercentage}%`
-                        )}
-                      </CardTitle>
-                      <CardAction>
-                        {!isLoadingCodingStats && (
-                          <Badge variant="outline">
-                            <IconMoon className="size-4" />
-                            {codingStats.nightCommits} commits
-                          </Badge>
-                        )}
-                      </CardAction>
-                    </CardHeader>
-                    <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                      {isLoadingCodingStats ? (
-                        <>
-                          <Skeleton className="h-4 w-full" />
-                          <Skeleton className="h-4 w-3/4" />
-                        </>
-                      ) : (
-                        <>
+                  {/* Night Coding Card */}
+                  {isLoadingCodingStats ? (
+                    <Card className="@container/card">
+                      <CardHeader>
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-8 w-16" />
+                        <CardAction>
+                          <Skeleton className="h-6 w-20" />
+                        </CardAction>
+                      </CardHeader>
+                      <CardFooter className="flex-col items-start gap-1.5 text-sm">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-3/4" />
+                      </CardFooter>
+                    </Card>
+                  ) : (
+                    codingStats && (
+                      <Card className="@container/card">
+                        <CardHeader>
+                          <CardDescription>Night Coding</CardDescription>
+                          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                            {codingStats.nightPercentage}%
+                          </CardTitle>
+                          <CardAction>
+                            <Badge variant="outline">
+                              <IconMoon className="size-4" />
+                              {codingStats.nightCommits} commits
+                            </Badge>
+                          </CardAction>
+                        </CardHeader>
+                        <CardFooter className="flex-col items-start gap-1.5 text-sm">
                           <div className="line-clamp-1 flex gap-2 font-medium">
                             Commits between 22:00-03:00{" "}
                             <IconMoon className="size-4" />
@@ -874,38 +921,42 @@ export function SearchGithubUser() {
                           <div className="text-muted-foreground">
                             Night owl coding sessions
                           </div>
-                        </>
-                      )}
-                    </CardFooter>
-                  </Card>
+                        </CardFooter>
+                      </Card>
+                    )
+                  )}
 
-                  <Card className="@container/card">
-                    <CardHeader>
-                      <CardDescription>Day Coding</CardDescription>
-                      <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                        {isLoadingCodingStats ? (
-                          <Skeleton className="h-8 w-16" />
-                        ) : (
-                          `${codingStats.dayPercentage}%`
-                        )}
-                      </CardTitle>
-                      <CardAction>
-                        {!isLoadingCodingStats && (
-                          <Badge variant="outline">
-                            <IconSun className="size-4" />
-                            {codingStats.dayCommits} commits
-                          </Badge>
-                        )}
-                      </CardAction>
-                    </CardHeader>
-                    <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                      {isLoadingCodingStats ? (
-                        <>
-                          <Skeleton className="h-4 w-full" />
-                          <Skeleton className="h-4 w-3/4" />
-                        </>
-                      ) : (
-                        <>
+                  {/* Day Coding Card */}
+                  {isLoadingCodingStats ? (
+                    <Card className="@container/card">
+                      <CardHeader>
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-8 w-16" />
+                        <CardAction>
+                          <Skeleton className="h-6 w-20" />
+                        </CardAction>
+                      </CardHeader>
+                      <CardFooter className="flex-col items-start gap-1.5 text-sm">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-3/4" />
+                      </CardFooter>
+                    </Card>
+                  ) : (
+                    codingStats && (
+                      <Card className="@container/card">
+                        <CardHeader>
+                          <CardDescription>Day Coding</CardDescription>
+                          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                            {codingStats.dayPercentage}%
+                          </CardTitle>
+                          <CardAction>
+                            <Badge variant="outline">
+                              <IconSun className="size-4" />
+                              {codingStats.dayCommits} commits
+                            </Badge>
+                          </CardAction>
+                        </CardHeader>
+                        <CardFooter className="flex-col items-start gap-1.5 text-sm">
                           <div className="line-clamp-1 flex gap-2 font-medium">
                             Commits between 04:00-21:00{" "}
                             <IconSun className="size-4" />
@@ -913,49 +964,54 @@ export function SearchGithubUser() {
                           <div className="text-muted-foreground">
                             Daytime coding productivity
                           </div>
-                        </>
-                      )}
-                    </CardFooter>
-                  </Card>
+                        </CardFooter>
+                      </Card>
+                    )
+                  )}
 
-                  {topLanguages && topLanguages.length > 0 && (
+                  {/* Top Language Card */}
+                  {isLoadingLanguages ? (
                     <Card className="@container/card">
                       <CardHeader>
-                        <CardDescription>Top Language</CardDescription>
-                        <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                          {isLoadingLanguages ? (
-                            <Skeleton className="h-8 w-24" />
-                          ) : (
-                            topLanguages[0]?.language || "-"
-                          )}
-                        </CardTitle>
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-8 w-24" />
                         <CardAction>
-                          {!isLoadingLanguages && topLanguages[0] && (
-                            <Badge variant="outline">
-                              {topLanguages[0].percentage}%
-                            </Badge>
-                          )}
+                          <Skeleton className="h-6 w-16" />
                         </CardAction>
                       </CardHeader>
                       <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                        {isLoadingLanguages ? (
-                          <>
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-3/4" />
-                          </>
-                        ) : (
-                          <>
-                            <div className="line-clamp-1 flex gap-2 font-medium">
-                              Most used programming language
-                            </div>
-                            <div className="text-muted-foreground">
-                              {topLanguages[0]?.bytes.toLocaleString()} bytes
-                              across repos
-                            </div>
-                          </>
-                        )}
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-3/4" />
                       </CardFooter>
                     </Card>
+                  ) : (
+                    topLanguages &&
+                    topLanguages.length > 0 && (
+                      <Card className="@container/card">
+                        <CardHeader>
+                          <CardDescription>Top Language</CardDescription>
+                          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                            {topLanguages[0]?.language || "-"}
+                          </CardTitle>
+                          <CardAction>
+                            {topLanguages[0] && (
+                              <Badge variant="outline">
+                                {topLanguages[0].percentage}%
+                              </Badge>
+                            )}
+                          </CardAction>
+                        </CardHeader>
+                        <CardFooter className="flex-col items-start gap-1.5 text-sm">
+                          <div className="line-clamp-1 flex gap-2 font-medium">
+                            Most used programming language
+                          </div>
+                          <div className="text-muted-foreground">
+                            {topLanguages[0]?.bytes.toLocaleString()} bytes
+                            across repos
+                          </div>
+                        </CardFooter>
+                      </Card>
+                    )
                   )}
                 </div>
               )}
@@ -997,6 +1053,19 @@ export function SearchGithubUser() {
           </>
         )
       )}
+
+      <GitHubChatbot
+        user={user || null}
+        codingStats={codingStats || null}
+        topLanguages={topLanguages || null}
+        open={chatOpen}
+        onOpenChange={(open) => {
+          setChatOpen(open);
+          if (!open) {
+            setActiveView("dashboard");
+          }
+        }}
+      />
     </div>
   );
 }

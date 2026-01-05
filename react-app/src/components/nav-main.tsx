@@ -1,4 +1,5 @@
 import { IconCirclePlusFilled, IconMail, type Icon } from "@tabler/icons-react"
+import { Link, useLocation } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -11,13 +12,22 @@ import {
 
 export function NavMain({
   items,
+  activeView,
+  onChatClick,
+  onDashboardClick,
 }: {
   items: {
     title: string
     url: string
     icon?: Icon
+    key?: string
   }[]
+  activeView?: "dashboard" | "chat"
+  onChatClick?: () => void
+  onDashboardClick?: () => void
 }) {
+  const location = useLocation();
+
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
@@ -41,14 +51,53 @@ export function NavMain({
           </SidebarMenuItem>
         </SidebarMenu>
         <SidebarMenu>
-          {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton tooltip={item.title}>
-                {item.icon && <item.icon />}
-                <span>{item.title}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          {items.map((item) => {
+            let isActive = false;
+            
+            if (item.key === "dashboard") {
+              isActive = location.pathname === "/" || (activeView === "dashboard" && location.pathname === "/");
+            } else if (item.key === "chat") {
+              isActive = activeView === "chat";
+            } else if (item.key) {
+              isActive = location.pathname === item.url;
+            }
+
+            const handleClick = (e: React.MouseEvent) => {
+              if (item.key === "chat" && onChatClick) {
+                e.preventDefault();
+                onChatClick();
+              } else if (item.key === "dashboard" && onDashboardClick) {
+                e.preventDefault();
+                onDashboardClick();
+              }
+            };
+
+            return (
+              <SidebarMenuItem key={item.title}>
+                {item.key === "chat" || item.key === "dashboard" ? (
+                  <SidebarMenuButton
+                    tooltip={item.title}
+                    isActive={isActive}
+                    onClick={handleClick}
+                  >
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                ) : (
+                  <SidebarMenuButton
+                    tooltip={item.title}
+                    isActive={isActive}
+                    asChild
+                  >
+                    <Link to={item.url}>
+                      {item.icon && <item.icon />}
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                )}
+              </SidebarMenuItem>
+            );
+          })}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
