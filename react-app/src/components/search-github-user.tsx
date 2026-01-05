@@ -24,6 +24,7 @@ import { CardAction, CardFooter } from "@/components/ui/card";
 import { ChartAreaInteractive } from "@/components/chart-area-interactive";
 import { RepoTable } from "@/components/repo-table";
 import { GitHubChatbot } from "@/components/github-chatbot";
+import { StressAnalyzer } from "@/components/stress-analyzer";
 
 interface GitHubUser {
   login: string;
@@ -1037,6 +1038,7 @@ export function SearchGithubUser({
                   isLoading={isLoadingCommits}
                 />
               </div>
+              {searchQuery && <StressAnalyzer username={searchQuery} />}
 
               <Card className="mx-4 lg:mx-6">
                 <CardHeader>
@@ -1049,6 +1051,8 @@ export function SearchGithubUser({
                   <RepoTable data={topRepos || []} isLoading={isLoadingRepos} />
                 </CardContent>
               </Card>
+
+              {/* Stress & Panic Code Detection */}
             </div>
           </>
         )
