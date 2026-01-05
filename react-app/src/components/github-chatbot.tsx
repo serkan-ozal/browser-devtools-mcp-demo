@@ -33,6 +33,32 @@ interface GitHubUser {
   created_at: string;
 }
 
+interface StressAnalysis {
+  totalCommits: number;
+  averageStressScore: number;
+  stressTrend: number;
+  mostStressedCommits: Array<{
+    sha: string;
+    message: string;
+    stressScore: number;
+    repo: string;
+  }>;
+  weeklyStress: Array<{
+    week: string;
+    averageStress: number;
+    commitCount: number;
+  }>;
+  stressByTime: {
+    night: number;
+    day: number;
+  };
+  stressByType: {
+    messageStress: number;
+    fileSpike: number;
+    nightAggressive: number;
+  };
+}
+
 interface GitHubChatbotProps {
   user: GitHubUser | null;
   codingStats?: {
@@ -44,6 +70,7 @@ interface GitHubChatbotProps {
     language: string;
     percentage: number;
   }> | null;
+  stressAnalysis?: StressAnalysis | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
@@ -52,7 +79,8 @@ function generateResponse(
   question: string,
   user: GitHubUser | null,
   codingStats: GitHubChatbotProps["codingStats"],
-  topLanguages: GitHubChatbotProps["topLanguages"]
+  topLanguages: GitHubChatbotProps["topLanguages"],
+  stressAnalysis: GitHubChatbotProps["stressAnalysis"]
 ): string {
   if (!user) {
     return "Please search for a GitHub user first to ask questions about their profile.";
@@ -62,38 +90,60 @@ function generateResponse(
 
   // Name and username
   if (lowerQuestion.includes("name") || lowerQuestion.includes("who")) {
-    return `${user.name || user.login} (@${user.login}) is a GitHub user with ${user.public_repos} public repositories, ${user.followers} followers, and following ${user.following} users.`;
+    return `${user.name || user.login} (@${user.login}) is a GitHub user with ${
+      user.public_repos
+    } public repositories, ${user.followers} followers, and following ${
+      user.following
+    } users.`;
   }
 
   // Bio
   if (lowerQuestion.includes("bio") || lowerQuestion.includes("about")) {
     return user.bio
       ? `${user.name || user.login}'s bio: "${user.bio}"`
-      : `${user.name || user.login} doesn't have a bio on their GitHub profile.`;
+      : `${
+          user.name || user.login
+        } doesn't have a bio on their GitHub profile.`;
   }
 
   // Location
-  if (lowerQuestion.includes("location") || lowerQuestion.includes("where") || lowerQuestion.includes("live")) {
+  if (
+    lowerQuestion.includes("location") ||
+    lowerQuestion.includes("where") ||
+    lowerQuestion.includes("live")
+  ) {
     return user.location
       ? `${user.name || user.login} is located in ${user.location}.`
       : `Location information is not available for ${user.name || user.login}.`;
   }
 
   // Company
-  if (lowerQuestion.includes("company") || lowerQuestion.includes("work") || lowerQuestion.includes("employer")) {
+  if (
+    lowerQuestion.includes("company") ||
+    lowerQuestion.includes("work") ||
+    lowerQuestion.includes("employer")
+  ) {
     return user.company
       ? `${user.name || user.login} works at ${user.company}.`
       : `Company information is not available for ${user.name || user.login}.`;
   }
 
   // Repositories
-  if (lowerQuestion.includes("repo") || lowerQuestion.includes("repository") || lowerQuestion.includes("project")) {
-    return `${user.name || user.login} has ${user.public_repos} public repositories on GitHub.`;
+  if (
+    lowerQuestion.includes("repo") ||
+    lowerQuestion.includes("repository") ||
+    lowerQuestion.includes("project")
+  ) {
+    return `${user.name || user.login} has ${
+      user.public_repos
+    } public repositories on GitHub.`;
   }
 
   // Followers
   if (lowerQuestion.includes("follower")) {
-    return `${user.name || user.login} has ${user.followers} followers on GitHub.`;
+    return `${user.name || user.login} has ${
+      user.followers
+    } followers on GitHub.`;
   }
 
   // Coding time
@@ -101,29 +151,131 @@ function generateResponse(
     (lowerQuestion.includes("night") || lowerQuestion.includes("day")) &&
     codingStats
   ) {
-    return `${user.name || user.login} is a ${codingStats.coderType}. They code ${codingStats.nightPercentage}% during night hours (22:00-03:00) and ${codingStats.dayPercentage}% during day hours (04:00-21:00).`;
+    return `${user.name || user.login} is a ${
+      codingStats.coderType
+    }. They code ${
+      codingStats.nightPercentage
+    }% during night hours (22:00-03:00) and ${
+      codingStats.dayPercentage
+    }% during day hours (04:00-21:00).`;
   }
 
   // Languages
   if (
-    (lowerQuestion.includes("language") || lowerQuestion.includes("programming")) &&
+    (lowerQuestion.includes("language") ||
+      lowerQuestion.includes("programming")) &&
     topLanguages &&
     topLanguages.length > 0
   ) {
     const languages = topLanguages
       .map((lang) => `${lang.language} (${lang.percentage}%)`)
       .join(", ");
-    return `The top programming languages used by ${user.name || user.login} are: ${languages}`;
+    return `The top programming languages used by ${
+      user.name || user.login
+    } are: ${languages}`;
+  }
+
+  // Stress analysis questions
+  if (
+    (lowerQuestion.includes("stress") ||
+      lowerQuestion.includes("panic") ||
+      lowerQuestion.includes("rushed") ||
+      lowerQuestion.includes("urgent") ||
+      lowerQuestion.includes("pressure")) &&
+    stressAnalysis
+  ) {
+    const stressLevel = stressAnalysis.averageStressScore;
+    const stressLevelLabel =
+      stressLevel < 0.3 ? "low" : stressLevel < 0.6 ? "moderate" : "high";
+
+    let response = `${
+      user.name || user.login
+    } has a ${stressLevelLabel} stress level (${(stressLevel * 100).toFixed(
+      1
+    )}%) based on ${stressAnalysis.totalCommits} commits analyzed. `;
+
+    if (
+      lowerQuestion.includes("trend") ||
+      lowerQuestion.includes("change") ||
+      lowerQuestion.includes("increase") ||
+      lowerQuestion.includes("decrease")
+    ) {
+      if (stressAnalysis.stressTrend > 0) {
+        response += `⚠️ Stress levels have increased by ${Math.abs(
+          stressAnalysis.stressTrend
+        ).toFixed(1)}% in the last 2 weeks. `;
+      } else if (stressAnalysis.stressTrend < 0) {
+        response += `✅ Stress levels have decreased by ${Math.abs(
+          stressAnalysis.stressTrend
+        ).toFixed(1)}% in the last 2 weeks. `;
+      } else {
+        response += `Stress levels have remained stable. `;
+      }
+    }
+
+    if (lowerQuestion.includes("night") || lowerQuestion.includes("late")) {
+      response += `Night-time stress (22:00-05:00) is ${(
+        stressAnalysis.stressByTime.night * 100
+      ).toFixed(1)}%, while day-time stress is ${(
+        stressAnalysis.stressByTime.day * 100
+      ).toFixed(1)}%. `;
+    }
+
+    if (
+      (lowerQuestion.includes("commit") && lowerQuestion.includes("most")) ||
+      lowerQuestion.includes("worst")
+    ) {
+      if (stressAnalysis.mostStressedCommits.length > 0) {
+        const topCommit = stressAnalysis.mostStressedCommits[0];
+        response += `The most stressed commit was "${
+          topCommit.message.split("\n")[0]
+        }" in ${topCommit.repo} with a ${(topCommit.stressScore * 100).toFixed(
+          0
+        )}% stress score. `;
+      }
+    }
+
+    if (
+      lowerQuestion.includes("indicator") ||
+      lowerQuestion.includes("cause") ||
+      lowerQuestion.includes("reason")
+    ) {
+      response += `Stress indicators: ${stressAnalysis.stressByType.messageStress.toFixed(
+        1
+      )}% from stressful commit messages, ${stressAnalysis.stressByType.fileSpike.toFixed(
+        1
+      )}% from file count spikes, and ${stressAnalysis.stressByType.nightAggressive.toFixed(
+        1
+      )}% from night-time aggressive commits. `;
+    }
+
+    return response.trim();
   }
 
   // Default response
-  return `I can help you learn about ${user.name || user.login}'s GitHub profile. You can ask about their name, bio, location, company, repositories, followers, coding habits, or programming languages.`;
+  const availableTopics = [
+    "name",
+    "bio",
+    "location",
+    "company",
+    "repositories",
+    "followers",
+    "coding habits",
+    "programming languages",
+  ];
+  if (stressAnalysis) {
+    availableTopics.push("stress analysis", "panic detection");
+  }
+  return `I can help you learn about ${
+    user.name || user.login
+  }'s GitHub profile. You can ask about their ${availableTopics.join(", ")}.`;
 }
 
 export function GitHubChatbot({
   user,
   codingStats,
   topLanguages,
+  stressAnalysis,
   open: controlledOpen,
   onOpenChange,
 }: GitHubChatbotProps) {
@@ -135,7 +287,9 @@ export function GitHubChatbot({
       id: "1",
       role: "assistant",
       content: user
-        ? `Hello! I can help you learn about ${user.name || user.login}'s GitHub profile. Ask me anything!`
+        ? `Hello! I can help you learn about ${
+            user.name || user.login
+          }'s GitHub profile. Ask me anything!`
         : "Hello! Please search for a GitHub user first, then I can help you learn about their profile.",
       timestamp: new Date(),
     },
@@ -157,7 +311,9 @@ export function GitHubChatbot({
         {
           id: "1",
           role: "assistant",
-          content: `Hello! I can help you learn about ${user.name || user.login}'s GitHub profile. Ask me anything!`,
+          content: `Hello! I can help you learn about ${
+            user.name || user.login
+          }'s GitHub profile. Ask me anything!`,
           timestamp: new Date(),
         },
       ]);
@@ -180,7 +336,13 @@ export function GitHubChatbot({
 
     // Simulate AI response
     setTimeout(() => {
-      const response = generateResponse(input, user, codingStats, topLanguages);
+      const response = generateResponse(
+        input,
+        user,
+        codingStats,
+        topLanguages,
+        stressAnalysis
+      );
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -224,7 +386,7 @@ export function GitHubChatbot({
             </SheetTitle>
             <SheetDescription>
               {user
-                ? "Ask questions about the GitHub user's profile, repositories, and coding habits."
+                ? "Ask questions about the GitHub user's profile, repositories, coding habits, and stress analysis."
                 : "Please select a GitHub user to start chatting."}
             </SheetDescription>
           </SheetHeader>
@@ -243,38 +405,40 @@ export function GitHubChatbot({
               <div className="flex-1 overflow-y-auto">
                 <div className="flex flex-col gap-4 pb-4">
                   {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex gap-3 ${
-                      message.role === "user" ? "justify-end" : "justify-start"
-                    }`}
-                  >
-                    {message.role === "assistant" && (
-                      <Avatar className="size-8 shrink-0">
-                        <AvatarFallback>AI</AvatarFallback>
-                      </Avatar>
-                    )}
                     <div
-                      className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                      key={message.id}
+                      className={`flex gap-3 ${
                         message.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted"
+                          ? "justify-end"
+                          : "justify-start"
                       }`}
                     >
-                      <p className="text-sm">{message.content}</p>
-                      <p className="mt-1 text-xs opacity-70">
-                        {message.timestamp.toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
+                      {message.role === "assistant" && (
+                        <Avatar className="size-8 shrink-0">
+                          <AvatarFallback>AI</AvatarFallback>
+                        </Avatar>
+                      )}
+                      <div
+                        className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                          message.role === "user"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted"
+                        }`}
+                      >
+                        <p className="text-sm">{message.content}</p>
+                        <p className="mt-1 text-xs opacity-70">
+                          {message.timestamp.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                      {message.role === "user" && (
+                        <Avatar className="size-8 shrink-0">
+                          <AvatarFallback>You</AvatarFallback>
+                        </Avatar>
+                      )}
                     </div>
-                    {message.role === "user" && (
-                      <Avatar className="size-8 shrink-0">
-                        <AvatarFallback>You</AvatarFallback>
-                      </Avatar>
-                    )}
-                  </div>
                   ))}
                   <div ref={messagesEndRef} />
                 </div>
@@ -283,17 +447,21 @@ export function GitHubChatbot({
 
             {user && (
               <form onSubmit={handleSend} className="flex gap-2 pb-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about the GitHub profile..."
-                className="flex-1"
-                disabled={!user}
-              />
-              <Button type="submit" disabled={!input.trim() || !user} size="icon">
-                <IconSend className="size-4" />
-                <span className="sr-only">Send message</span>
-              </Button>
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask about the GitHub profile..."
+                  className="flex-1"
+                  disabled={!user}
+                />
+                <Button
+                  type="submit"
+                  disabled={!input.trim() || !user}
+                  size="icon"
+                >
+                  <IconSend className="size-4" />
+                  <span className="sr-only">Send message</span>
+                </Button>
               </form>
             )}
           </div>
@@ -302,4 +470,3 @@ export function GitHubChatbot({
     </>
   );
 }
-

@@ -164,7 +164,7 @@ function calculateStressScore(commits: CommitData[]): CommitData[] {
   });
 }
 
-async function analyzeUserStress(username: string): Promise<StressAnalysis> {
+export async function analyzeUserStress(username: string): Promise<StressAnalysis> {
   const commits = await fetchUserCommits(username);
   const commitsWithStress = calculateStressScore(commits);
 
