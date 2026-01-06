@@ -1,0 +1,40 @@
+# config.yaml
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - http://localhost:3000
+            - http://127.0.0.1:3000
+
+processors:
+  batch: {}
+
+extensions:
+  jaeger_storage:
+    backends:
+      mem_traces:
+        memory:
+          max_traces: 100000
+
+  jaeger_query:
+    storage:
+      traces: mem_traces
+    http:
+      endpoint: 0.0.0.0:16686
+
+exporters:
+  jaeger_storage_exporter:
+    trace_storage: mem_traces
+
+service:
+  extensions: [jaeger_storage, jaeger_query]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [jaeger_storage_exporter]
