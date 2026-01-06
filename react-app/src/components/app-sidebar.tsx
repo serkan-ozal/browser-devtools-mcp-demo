@@ -16,6 +16,10 @@ import {
   IconSettings,
   IconUsers,
 } from "@tabler/icons-react";
+import {
+  getStoredUser,
+  type StoredGitHubUser,
+} from "@/components/github-username-modal";
 
 import { NavDocuments } from "@/components/nav-documents";
 import { NavMain } from "@/components/nav-main";
@@ -36,14 +40,17 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   onChatClick?: () => void;
   onDashboardClick?: () => void;
   currentPath?: string;
+  onAccountClick?: () => void;
 }
 
+// Default user data (will be overridden by stored user if available)
+const getDefaultUser = () => ({
+  name: "",
+  email: "",
+  avatar: "",
+});
+
 const data = {
-  user: {
-    name: "Thundra Admin",
-    email: "admin@demo.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: [
     {
       title: "Dashboard",
@@ -52,10 +59,10 @@ const data = {
       key: "dashboard",
     },
     {
-      title: "Lifecycle",
-      url: "/lifecycle",
+      title: "Branches",
+      url: "/branches",
       icon: IconListDetails,
-      key: "lifecycle",
+      key: "branches",
     },
     {
       title: "Analytics",
@@ -170,8 +177,40 @@ export function AppSidebar({
   activeView = "dashboard",
   onChatClick,
   onDashboardClick,
+  onAccountClick,
   ...props
 }: AppSidebarProps) {
+  const [userData, setUserData] = React.useState<StoredGitHubUser | null>(null);
+
+  // Load user data from localStorage
+  React.useEffect(() => {
+    const storedUser = getStoredUser();
+    if (storedUser) {
+      setUserData(storedUser);
+    }
+  }, []);
+
+  // Listen for storage changes to update user data
+  React.useEffect(() => {
+    const handleStorageChange = () => {
+      const storedUser = getStoredUser();
+      if (storedUser) {
+        setUserData(storedUser);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    // Also listen for custom event for same-tab updates
+    window.addEventListener("githubUserUpdated", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("githubUserUpdated", handleStorageChange);
+    };
+  }, []);
+
+  const user = userData || getDefaultUser();
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -184,10 +223,12 @@ export function AppSidebar({
               <a href="/">
                 <img
                   src="/favicon.svg"
-                  alt="Thundra Logo"
+                  alt="GitHub Analytics Logo"
                   className="!size-5 shrink-0"
                 />
-                <span className="text-base font-semibold">Thundra Inc.</span>
+                <span className="text-base font-semibold">
+                  GitHub Analytics
+                </span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -204,7 +245,15 @@ export function AppSidebar({
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        {user.name ? (
+          <NavUser user={user} onAccountClick={onAccountClick} />
+        ) : (
+          <div className="px-2 py-2">
+            <div className="text-xs text-muted-foreground text-center">
+              Search for a GitHub user to see profile
+            </div>
+          </div>
+        )}
       </SidebarFooter>
     </Sidebar>
   );

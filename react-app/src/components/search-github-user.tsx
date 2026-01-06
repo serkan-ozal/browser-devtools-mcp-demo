@@ -41,6 +41,7 @@ interface GitHubUser {
   blog: string | null;
   company: string | null;
   created_at: string;
+  email: string | null;
 }
 
 interface GitHubUserSearchResult {
@@ -473,6 +474,7 @@ interface SearchGithubUserProps {
   onViewChange?: (view: "dashboard" | "chat") => void;
   chatOpen?: boolean;
   onChatOpenChange?: (open: boolean) => void;
+  initialUsername?: string;
 }
 
 export function SearchGithubUser({
@@ -480,9 +482,10 @@ export function SearchGithubUser({
   onViewChange,
   chatOpen: controlledChatOpen,
   onChatOpenChange,
+  initialUsername,
 }: SearchGithubUserProps = {}) {
   const [username, setUsername] = React.useState("");
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [searchQuery, setSearchQuery] = React.useState(initialUsername || "");
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
   const [showSuggestions, setShowSuggestions] = React.useState(false);
   const [internalActiveView, setInternalActiveView] = React.useState<
@@ -502,6 +505,17 @@ export function SearchGithubUser({
 
   const inputRef = React.useRef<HTMLInputElement>(null);
   const suggestionsRef = React.useRef<HTMLDivElement>(null);
+
+  // Load initial username if provided (only on mount)
+  const hasLoadedInitial = React.useRef(false);
+  React.useEffect(() => {
+    if (initialUsername && !hasLoadedInitial.current) {
+      setUsername(initialUsername);
+      setSearchQuery(initialUsername);
+      setDebouncedSearch(initialUsername);
+      hasLoadedInitial.current = true;
+    }
+  }, [initialUsername]);
 
   React.useEffect(() => {
     if (chatOpen) {
@@ -526,6 +540,8 @@ export function SearchGithubUser({
     queryFn: () => searchGitHubUsers(debouncedSearch),
     enabled: debouncedSearch.length > 2 && showSuggestions,
     retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
 
   // Fetch selected user details
@@ -539,7 +555,12 @@ export function SearchGithubUser({
     queryFn: () => fetchGitHubUser(searchQuery),
     enabled: searchQuery.length > 0,
     retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
+
+  // Note: User data is only saved to localStorage when username is saved via modal
+  // Search operations don't update the sidebar user info
 
   // Fetch user commit data
   const {
@@ -552,7 +573,8 @@ export function SearchGithubUser({
     queryFn: () => fetchUserMonthlyCommits(searchQuery),
     enabled: searchQuery.length > 0 && !!user,
     retry: false,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
 
   // Fetch top repos
@@ -561,7 +583,8 @@ export function SearchGithubUser({
     queryFn: () => fetchTopRepos(searchQuery),
     enabled: searchQuery.length > 0 && !!user,
     retry: false,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
 
   // Fetch coding time stats
@@ -570,7 +593,8 @@ export function SearchGithubUser({
     queryFn: () => fetchUserCodingTimeStats(searchQuery),
     enabled: searchQuery.length > 0 && !!user,
     retry: false,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
 
   // Fetch top languages
@@ -579,7 +603,8 @@ export function SearchGithubUser({
     queryFn: () => fetchUserTopLanguages(searchQuery),
     enabled: searchQuery.length > 0 && !!user,
     retry: false,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
 
   // Fetch stress analysis
@@ -588,7 +613,8 @@ export function SearchGithubUser({
     queryFn: () => analyzeUserStress(searchQuery),
     enabled: searchQuery.length > 0 && !!user,
     retry: false,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
 
   // Close suggestions when clicking outside

@@ -1,5 +1,7 @@
 import { useOutletContext } from "react-router-dom";
 import { SearchGithubUser } from "@/components/search-github-user";
+import { getStoredUsername } from "@/components/github-username-modal";
+import * as React from "react";
 
 interface DashboardPageContext {
   activeView?: "dashboard" | "chat";
@@ -11,6 +13,15 @@ interface DashboardPageContext {
 export function DashboardPage() {
   const context = useOutletContext<DashboardPageContext>();
   const { activeView, onViewChange, chatOpen, onChatOpenChange } = context || {};
+  const [savedUsername, setSavedUsername] = React.useState<string | null>(null);
+
+  // Check for saved username on mount
+  React.useEffect(() => {
+    const stored = getStoredUsername();
+    if (stored) {
+      setSavedUsername(stored);
+    }
+  }, []);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -22,6 +33,7 @@ export function DashboardPage() {
               onViewChange={onViewChange}
               chatOpen={chatOpen}
               onChatOpenChange={onChatOpenChange}
+              initialUsername={savedUsername || undefined}
             />
           </div>
         </div>

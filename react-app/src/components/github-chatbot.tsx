@@ -1,5 +1,5 @@
 import * as React from "react";
-import { IconMessageCircle, IconSend } from "@tabler/icons-react";
+import { IconMessageCircle, IconSend, IconLoader2 } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -295,6 +295,7 @@ export function GitHubChatbot({
     },
   ]);
   const [input, setInput] = React.useState("");
+  const [isGenerating, setIsGenerating] = React.useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -303,7 +304,7 @@ export function GitHubChatbot({
 
   React.useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, messages.length]);
 
   React.useEffect(() => {
     if (user && messages.length === 1) {
@@ -322,7 +323,7 @@ export function GitHubChatbot({
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isGenerating) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -332,12 +333,14 @@ export function GitHubChatbot({
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const question = input;
     setInput("");
+    setIsGenerating(true);
 
-    // Simulate AI response
+    // Simulate AI response with rule-based system
     setTimeout(() => {
       const response = generateResponse(
-        input,
+        question,
         user,
         codingStats,
         topLanguages,
@@ -350,6 +353,8 @@ export function GitHubChatbot({
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, assistantMessage]);
+      setIsGenerating(false);
+      scrollToBottom();
     }, 500);
   };
 
@@ -369,20 +374,22 @@ export function GitHubChatbot({
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="w-full sm:max-w-lg">
           <SheetHeader className="px-4 pt-4">
-            <SheetTitle className="flex items-center gap-2">
-              {user ? (
-                <>
-                  <Avatar className="size-8">
-                    <AvatarImage src={user.avatar_url} alt={user.login} />
-                    <AvatarFallback>
-                      {user.login[0].toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span>Chat about {user.name || user.login}</span>
-                </>
-              ) : (
-                "GitHub Profile Chat"
-              )}
+            <SheetTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {user ? (
+                  <>
+                    <Avatar className="size-8">
+                      <AvatarImage src={user.avatar_url} alt={user.login} />
+                      <AvatarFallback>
+                        {user.login[0].toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span>Chat about {user.name || user.login}</span>
+                  </>
+                ) : (
+                  "GitHub Profile Chat"
+                )}
+              </div>
             </SheetTitle>
             <SheetDescription>
               {user
@@ -452,14 +459,18 @@ export function GitHubChatbot({
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask about the GitHub profile..."
                   className="flex-1"
-                  disabled={!user}
+                  disabled={!user || isGenerating}
                 />
                 <Button
                   type="submit"
-                  disabled={!input.trim() || !user}
+                  disabled={!input.trim() || !user || isGenerating}
                   size="icon"
                 >
-                  <IconSend className="size-4" />
+                  {isGenerating ? (
+                    <IconLoader2 className="size-4 animate-spin" />
+                  ) : (
+                    <IconSend className="size-4" />
+                  )}
                   <span className="sr-only">Send message</span>
                 </Button>
               </form>
