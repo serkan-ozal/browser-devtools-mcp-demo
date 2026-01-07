@@ -9,7 +9,11 @@
     "dev": "nodemon server.js",
     "dev:otel": "OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-todo-app} OTEL_TRACES_EXPORTER=${OTEL_TRACES_EXPORTER:-console} OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318} OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf} NODE_OPTIONS='--require @opentelemetry/auto-instrumentations-node/register' nodemon server.js"
   },
-  "keywords": ["todo", "javascript", "nodejs"],
+  "keywords": [
+    "todo",
+    "javascript",
+    "nodejs"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
