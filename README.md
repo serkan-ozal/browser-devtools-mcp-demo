@@ -1,4 +1,4 @@
-# 🚀 Thundra - GitHub Analytics Dashboard
+# 🚀 GitHub Analytics Dashboard
 
 <div align="center">
 
@@ -38,7 +38,7 @@
 
 **Coding Analyze** is a modern, feature-rich GitHub analytics dashboard that provides deep insights into developer profiles, coding habits, and repository statistics. Built with cutting-edge web technologies, it offers an intuitive interface for analyzing GitHub users' activity patterns, commit history, programming language preferences, and more.
 
-### What Makes Thundra Special?
+### What Makes GitHub Analytics Special?
 
 - 🔍 **Intelligent User Search** - Real-time autocomplete with GitHub user suggestions
 - 📊 **Comprehensive Analytics** - Visualize commit patterns, coding habits, and language usage
