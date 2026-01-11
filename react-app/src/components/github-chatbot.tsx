@@ -84,15 +84,43 @@ export function GitHubChatbot({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const sendMessage = async (text: string): Promise<string> => {
-    const res = await fetch("http://localhost:3001/chat", {
+  const sendMessageStream = async (
+    text: string,
+    onChunk: (chunk: string) => void
+  ): Promise<void> => {
+    const res = await fetch("http://localhost:8000/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: text }),
     });
 
-    const data = await res.json();
-    return data.reply;
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) {
+      throw new Error("Response body is not readable");
+    }
+
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      // Decode the chunk and send it immediately
+      const chunk = decoder.decode(value, { stream: true });
+      if (chunk) {
+        onChunk(chunk);
+      }
+    }
+
+    // Flush any remaining data
+    const remaining = decoder.decode();
+    if (remaining) {
+      onChunk(remaining);
+    }
   };
 
   const handleSend = async (e: React.FormEvent) => {
@@ -122,16 +150,18 @@ export function GitHubChatbot({
     setMessages((prev) => [...prev, assistantMessage]);
 
     try {
-      const reply = await sendMessage(question);
-      
-      // Update assistant message with response
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === assistantMessageId
-            ? { ...msg, content: reply }
-            : msg
-        )
-      );
+      await sendMessageStream(question, (chunk) => {
+        // Update assistant message incrementally as chunks arrive
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId
+              ? { ...msg, content: (msg.content || "") + chunk }
+              : msg
+          )
+        );
+        // Scroll to bottom as content streams in
+        setTimeout(scrollToBottom, 0);
+      });
     } catch (error) {
       console.error("Error sending message:", error);
       // Update assistant message with error
@@ -142,7 +172,7 @@ export function GitHubChatbot({
                 ...msg,
                 content: `Sorry, I encountered an error: ${
                   error instanceof Error ? error.message : "Unknown error"
-                }. Please make sure the agent server is running on http://localhost:3001`,
+                }. Please make sure the agent server is running on http://localhost:8000`,
               }
             : msg
         )
