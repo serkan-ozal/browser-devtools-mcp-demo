@@ -24,10 +24,7 @@ import { CardAction, CardFooter } from "@/components/ui/card";
 import { ChartAreaInteractive } from "@/components/chart-area-interactive";
 import { RepoTable } from "@/components/repo-table";
 import { GitHubChatbot } from "@/components/github-chatbot";
-import {
-  StressAnalyzer,
-  analyzeUserStress,
-} from "@/components/stress-analyzer";
+import { StressAnalyzer } from "@/components/stress-analyzer";
 
 interface GitHubUser {
   login: string;
@@ -607,16 +604,6 @@ export function SearchGithubUser({
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   });
 
-  // Fetch stress analysis
-  const { data: stressAnalysis } = useQuery({
-    queryKey: ["stressAnalysis", searchQuery],
-    queryFn: () => analyzeUserStress(searchQuery),
-    enabled: searchQuery.length > 0 && !!user,
-    retry: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
-    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
-  });
-
   // Close suggestions when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1098,9 +1085,6 @@ export function SearchGithubUser({
 
       <GitHubChatbot
         user={user || null}
-        codingStats={codingStats || null}
-        topLanguages={topLanguages || null}
-        stressAnalysis={stressAnalysis || null}
         open={chatOpen}
         onOpenChange={(open) => {
           setChatOpen(open);

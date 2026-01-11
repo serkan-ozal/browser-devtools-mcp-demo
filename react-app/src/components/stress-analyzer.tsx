@@ -345,7 +345,7 @@ export function StressAnalyzer({ username }: StressAnalyzerProps) {
     );
   }
 
-  const stressLevel = analysis.averageStressScore;
+  const stressLevel = analysis.averageStressScore ?? 0;
   const stressLevelLabel =
     stressLevel < 0.3 ? "Low" : stressLevel < 0.6 ? "Moderate" : "High";
   const stressColor =
@@ -389,16 +389,16 @@ export function StressAnalyzer({ username }: StressAnalyzerProps) {
           {/* Trend Indicator */}
           <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
             <div className="flex items-center gap-2">
-              {analysis.stressTrend > 0 ? (
+              {(analysis.stressTrend ?? 0) > 0 ? (
                 <IconTrendingUp className="size-5 text-red-500" />
               ) : (
                 <IconTrendingDown className="size-5 text-green-500" />
               )}
               <div>
                 <p className="text-sm font-medium">Stress Trend</p>
-                <p className={`text-lg font-bold ${analysis.stressTrend > 0 ? "text-red-500" : "text-green-500"}`}>
-                  {analysis.stressTrend > 0 ? "+" : ""}
-                  {analysis.stressTrend.toFixed(1)}%
+                <p className={`text-lg font-bold ${(analysis.stressTrend ?? 0) > 0 ? "text-red-500" : "text-green-500"}`}>
+                  {(analysis.stressTrend ?? 0) > 0 ? "+" : ""}
+                  {(analysis.stressTrend ?? 0).toFixed(1)}%
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {analysis.stressTrend > 0
@@ -410,7 +410,7 @@ export function StressAnalyzer({ username }: StressAnalyzerProps) {
           </div>
 
           {/* Weekly Stress Chart */}
-          {analysis.weeklyStress.length > 0 && (
+          {analysis.weeklyStress && analysis.weeklyStress.length > 0 && (
             <div>
               <h4 className="text-sm font-medium mb-3">Weekly Stress Trend</h4>
               <ResponsiveContainer width="100%" height={200}>
@@ -428,7 +428,7 @@ export function StressAnalyzer({ username }: StressAnalyzerProps) {
                   />
                   <YAxis domain={[0, 1]} />
                   <Tooltip
-                    formatter={(value: number) => [(value * 100).toFixed(1) + "%", "Stress Score"]}
+                    formatter={(value: number) => [((value ?? 0) * 100).toFixed(1) + "%", "Stress Score"]}
                     labelFormatter={(label) => new Date(label).toLocaleDateString()}
                   />
                   <Area
@@ -464,10 +464,10 @@ export function StressAnalyzer({ username }: StressAnalyzerProps) {
                     Night (22:00-05:00)
                   </span>
                   <span className="text-sm font-semibold">
-                    {(analysis.stressByTime.night * 100).toFixed(1)}%
+                    {((analysis.stressByTime?.night ?? 0) * 100).toFixed(1)}%
                   </span>
                 </div>
-                <Progress value={analysis.stressByTime.night * 100} className="h-2" />
+                <Progress value={(analysis.stressByTime?.night ?? 0) * 100} className="h-2" />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -476,10 +476,10 @@ export function StressAnalyzer({ username }: StressAnalyzerProps) {
                     Day (05:00-22:00)
                   </span>
                   <span className="text-sm font-semibold">
-                    {(analysis.stressByTime.day * 100).toFixed(1)}%
+                    {((analysis.stressByTime?.day ?? 0) * 100).toFixed(1)}%
                   </span>
                 </div>
-                <Progress value={analysis.stressByTime.day * 100} className="h-2" />
+                <Progress value={(analysis.stressByTime?.day ?? 0) * 100} className="h-2" />
               </div>
             </div>
           </CardContent>
@@ -502,10 +502,10 @@ export function StressAnalyzer({ username }: StressAnalyzerProps) {
                     Stressful Messages
                   </span>
                   <span className="text-sm font-semibold">
-                    {analysis.stressByType.messageStress.toFixed(1)}%
+                    {(analysis.stressByType?.messageStress ?? 0).toFixed(1)}%
                   </span>
                 </div>
-                <Progress value={analysis.stressByType.messageStress} className="h-2" />
+                <Progress value={analysis.stressByType?.messageStress ?? 0} className="h-2" />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -514,10 +514,10 @@ export function StressAnalyzer({ username }: StressAnalyzerProps) {
                     File Spikes
                   </span>
                   <span className="text-sm font-semibold">
-                    {analysis.stressByType.fileSpike.toFixed(1)}%
+                    {(analysis.stressByType?.fileSpike ?? 0).toFixed(1)}%
                   </span>
                 </div>
-                <Progress value={analysis.stressByType.fileSpike} className="h-2" />
+                <Progress value={analysis.stressByType?.fileSpike ?? 0} className="h-2" />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -526,10 +526,10 @@ export function StressAnalyzer({ username }: StressAnalyzerProps) {
                     Night Aggressive
                   </span>
                   <span className="text-sm font-semibold">
-                    {analysis.stressByType.nightAggressive.toFixed(1)}%
+                    {(analysis.stressByType?.nightAggressive ?? 0).toFixed(1)}%
                   </span>
                 </div>
-                <Progress value={analysis.stressByType.nightAggressive} className="h-2" />
+                <Progress value={analysis.stressByType?.nightAggressive ?? 0} className="h-2" />
               </div>
             </div>
           </CardContent>
@@ -542,19 +542,19 @@ export function StressAnalyzer({ username }: StressAnalyzerProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {analysis.mostStressedCommits.slice(0, 3).map((commit, idx) => (
+              {(analysis.mostStressedCommits || []).slice(0, 3).map((commit, idx) => (
                 <div
                   key={commit.sha}
                   className="flex items-start justify-between p-2 bg-muted rounded text-xs"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{commit.message.split("\n")[0]}</p>
+                    <p className="font-medium truncate">{(commit.message || "").split("\n")[0]}</p>
                     <p className="text-muted-foreground text-[10px] mt-1">
-                      {commit.repo} • {(commit.stressScore * 100).toFixed(0)}%
+                      {commit.repo || "Unknown"} • {((commit.stressScore ?? 0) * 100).toFixed(0)}%
                     </p>
                   </div>
                   <Badge variant="destructive" className="ml-2 shrink-0">
-                    {(commit.stressScore * 100).toFixed(0)}%
+                    {((commit.stressScore ?? 0) * 100).toFixed(0)}%
                   </Badge>
                 </div>
               ))}
@@ -568,15 +568,15 @@ export function StressAnalyzer({ username }: StressAnalyzerProps) {
         <CardContent className="pt-6">
           <div className="space-y-2 text-sm">
             <p className="font-medium">
-              {analysis.stressTrend > 0 ? (
+              {(analysis.stressTrend ?? 0) > 0 ? (
                 <>
                   <span className="text-red-500">⚠️ Warning:</span> Stress levels have increased by{" "}
-                  {Math.abs(analysis.stressTrend).toFixed(1)}% in the last 2 weeks compared to the previous period.
+                  {Math.abs(analysis.stressTrend ?? 0).toFixed(1)}% in the last 2 weeks compared to the previous period.
                 </>
               ) : (
                 <>
                   <span className="text-green-500">✅ Good news:</span> Stress levels have decreased by{" "}
-                  {Math.abs(analysis.stressTrend).toFixed(1)}% in the last 2 weeks.
+                  {Math.abs(analysis.stressTrend ?? 0).toFixed(1)}% in the last 2 weeks.
                 </>
               )}
             </p>

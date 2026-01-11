@@ -33,249 +33,14 @@ interface GitHubUser {
   created_at: string;
 }
 
-interface StressAnalysis {
-  totalCommits: number;
-  averageStressScore: number;
-  stressTrend: number;
-  mostStressedCommits: Array<{
-    sha: string;
-    message: string;
-    stressScore: number;
-    repo: string;
-  }>;
-  weeklyStress: Array<{
-    week: string;
-    averageStress: number;
-    commitCount: number;
-  }>;
-  stressByTime: {
-    night: number;
-    day: number;
-  };
-  stressByType: {
-    messageStress: number;
-    fileSpike: number;
-    nightAggressive: number;
-  };
-}
-
 interface GitHubChatbotProps {
   user: GitHubUser | null;
-  codingStats?: {
-    coderType: "Night Coder" | "Daily Coder";
-    nightPercentage: number;
-    dayPercentage: number;
-  } | null;
-  topLanguages?: Array<{
-    language: string;
-    percentage: number;
-  }> | null;
-  stressAnalysis?: StressAnalysis | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
-function generateResponse(
-  question: string,
-  user: GitHubUser | null,
-  codingStats: GitHubChatbotProps["codingStats"],
-  topLanguages: GitHubChatbotProps["topLanguages"],
-  stressAnalysis: GitHubChatbotProps["stressAnalysis"]
-): string {
-  if (!user) {
-    return "Please search for a GitHub user first to ask questions about their profile.";
-  }
-
-  const lowerQuestion = question.toLowerCase();
-
-  // Name and username
-  if (lowerQuestion.includes("name") || lowerQuestion.includes("who")) {
-    return `${user.name || user.login} (@${user.login}) is a GitHub user with ${
-      user.public_repos
-    } public repositories, ${user.followers} followers, and following ${
-      user.following
-    } users.`;
-  }
-
-  // Bio
-  if (lowerQuestion.includes("bio") || lowerQuestion.includes("about")) {
-    return user.bio
-      ? `${user.name || user.login}'s bio: "${user.bio}"`
-      : `${
-          user.name || user.login
-        } doesn't have a bio on their GitHub profile.`;
-  }
-
-  // Location
-  if (
-    lowerQuestion.includes("location") ||
-    lowerQuestion.includes("where") ||
-    lowerQuestion.includes("live")
-  ) {
-    return user.location
-      ? `${user.name || user.login} is located in ${user.location}.`
-      : `Location information is not available for ${user.name || user.login}.`;
-  }
-
-  // Company
-  if (
-    lowerQuestion.includes("company") ||
-    lowerQuestion.includes("work") ||
-    lowerQuestion.includes("employer")
-  ) {
-    return user.company
-      ? `${user.name || user.login} works at ${user.company}.`
-      : `Company information is not available for ${user.name || user.login}.`;
-  }
-
-  // Repositories
-  if (
-    lowerQuestion.includes("repo") ||
-    lowerQuestion.includes("repository") ||
-    lowerQuestion.includes("project")
-  ) {
-    return `${user.name || user.login} has ${
-      user.public_repos
-    } public repositories on GitHub.`;
-  }
-
-  // Followers
-  if (lowerQuestion.includes("follower")) {
-    return `${user.name || user.login} has ${
-      user.followers
-    } followers on GitHub.`;
-  }
-
-  // Coding time
-  if (
-    (lowerQuestion.includes("night") || lowerQuestion.includes("day")) &&
-    codingStats
-  ) {
-    return `${user.name || user.login} is a ${
-      codingStats.coderType
-    }. They code ${
-      codingStats.nightPercentage
-    }% during night hours (22:00-03:00) and ${
-      codingStats.dayPercentage
-    }% during day hours (04:00-21:00).`;
-  }
-
-  // Languages
-  if (
-    (lowerQuestion.includes("language") ||
-      lowerQuestion.includes("programming")) &&
-    topLanguages &&
-    topLanguages.length > 0
-  ) {
-    const languages = topLanguages
-      .map((lang) => `${lang.language} (${lang.percentage}%)`)
-      .join(", ");
-    return `The top programming languages used by ${
-      user.name || user.login
-    } are: ${languages}`;
-  }
-
-  // Stress analysis questions
-  if (
-    (lowerQuestion.includes("stress") ||
-      lowerQuestion.includes("panic") ||
-      lowerQuestion.includes("rushed") ||
-      lowerQuestion.includes("urgent") ||
-      lowerQuestion.includes("pressure")) &&
-    stressAnalysis
-  ) {
-    const stressLevel = stressAnalysis.averageStressScore;
-    const stressLevelLabel =
-      stressLevel < 0.3 ? "low" : stressLevel < 0.6 ? "moderate" : "high";
-
-    let response = `${
-      user.name || user.login
-    } has a ${stressLevelLabel} stress level (${(stressLevel * 100).toFixed(
-      1
-    )}%) based on ${stressAnalysis.totalCommits} commits analyzed. `;
-
-    if (
-      lowerQuestion.includes("trend") ||
-      lowerQuestion.includes("change") ||
-      lowerQuestion.includes("increase") ||
-      lowerQuestion.includes("decrease")
-    ) {
-      if (stressAnalysis.stressTrend > 0) {
-        response += `⚠️ Stress levels have increased by ${Math.abs(
-          stressAnalysis.stressTrend
-        ).toFixed(1)}% in the last 2 weeks. `;
-      } else if (stressAnalysis.stressTrend < 0) {
-        response += `✅ Stress levels have decreased by ${Math.abs(
-          stressAnalysis.stressTrend
-        ).toFixed(1)}% in the last 2 weeks. `;
-      } else {
-        response += `Stress levels have remained stable. `;
-      }
-    }
-
-    if (lowerQuestion.includes("night") || lowerQuestion.includes("late")) {
-      response += `Night-time stress (22:00-05:00) is ${(
-        stressAnalysis.stressByTime.night * 100
-      ).toFixed(1)}%, while day-time stress is ${(
-        stressAnalysis.stressByTime.day * 100
-      ).toFixed(1)}%. `;
-    }
-
-    if (
-      (lowerQuestion.includes("commit") && lowerQuestion.includes("most")) ||
-      lowerQuestion.includes("worst")
-    ) {
-      if (stressAnalysis.mostStressedCommits.length > 0) {
-        const topCommit = stressAnalysis.mostStressedCommits[0];
-        response += `The most stressed commit was "${
-          topCommit.message.split("\n")[0]
-        }" in ${topCommit.repo} with a ${(topCommit.stressScore * 100).toFixed(
-          0
-        )}% stress score. `;
-      }
-    }
-
-    if (
-      lowerQuestion.includes("indicator") ||
-      lowerQuestion.includes("cause") ||
-      lowerQuestion.includes("reason")
-    ) {
-      response += `Stress indicators: ${stressAnalysis.stressByType.messageStress.toFixed(
-        1
-      )}% from stressful commit messages, ${stressAnalysis.stressByType.fileSpike.toFixed(
-        1
-      )}% from file count spikes, and ${stressAnalysis.stressByType.nightAggressive.toFixed(
-        1
-      )}% from night-time aggressive commits. `;
-    }
-
-    return response.trim();
-  }
-
-  // Default response
-  const availableTopics = [
-    "name",
-    "bio",
-    "location",
-    "company",
-    "repositories",
-    "followers",
-    "coding habits",
-    "programming languages",
-  ];
-  if (stressAnalysis) {
-    availableTopics.push("stress analysis", "panic detection");
-  }
-  return `I can help you learn about ${
-    user.name || user.login
-  }'s GitHub profile. You can ask about their ${availableTopics.join(", ")}.`;
-}
-
 export function GitHubChatbot({
   user,
-  codingStats,
-  topLanguages,
-  stressAnalysis,
   open: controlledOpen,
   onOpenChange,
 }: GitHubChatbotProps) {
@@ -287,10 +52,8 @@ export function GitHubChatbot({
       id: "1",
       role: "assistant",
       content: user
-        ? `Hello! I can help you learn about ${
-            user.name || user.login
-          }'s GitHub profile. Ask me anything!`
-        : "Hello! Please search for a GitHub user first, then I can help you learn about their profile.",
+        ? `Hello! I'm your GitHub AI assistant. I can help you search repositories, read code, check issues, and more using GitHub MCP. Ask me anything about GitHub!`
+        : "Hello! I'm your GitHub AI assistant powered by MCP. I can help you with GitHub repositories, code, issues, and more. What would you like to know?",
       timestamp: new Date(),
     },
   ]);
@@ -304,7 +67,7 @@ export function GitHubChatbot({
 
   React.useEffect(() => {
     scrollToBottom();
-  }, [messages, messages.length]);
+  }, [messages]);
 
   React.useEffect(() => {
     if (user && messages.length === 1) {
@@ -312,16 +75,27 @@ export function GitHubChatbot({
         {
           id: "1",
           role: "assistant",
-          content: `Hello! I can help you learn about ${
-            user.name || user.login
-          }'s GitHub profile. Ask me anything!`,
+          content: `Hello! I'm your GitHub AI assistant. I can help you search repositories, read code, check issues, and more using GitHub MCP. Ask me anything about GitHub!`,
           timestamp: new Date(),
         },
       ]);
     }
+    // Only run when user changes, not when messages change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const handleSend = (e: React.FormEvent) => {
+  const sendMessage = async (text: string): Promise<string> => {
+    const res = await fetch("http://localhost:3001/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text }),
+    });
+
+    const data = await res.json();
+    return data.reply;
+  };
+
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isGenerating) return;
 
@@ -337,25 +111,46 @@ export function GitHubChatbot({
     setInput("");
     setIsGenerating(true);
 
-    // Simulate AI response with rule-based system
-    setTimeout(() => {
-      const response = generateResponse(
-        question,
-        user,
-        codingStats,
-        topLanguages,
-        stressAnalysis
+    // Create assistant message placeholder
+    const assistantMessageId = (Date.now() + 1).toString();
+    const assistantMessage: Message = {
+      id: assistantMessageId,
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, assistantMessage]);
+
+    try {
+      const reply = await sendMessage(question);
+      
+      // Update assistant message with response
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMessageId
+            ? { ...msg, content: reply }
+            : msg
+        )
       );
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: response,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      // Update assistant message with error
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMessageId
+            ? {
+                ...msg,
+                content: `Sorry, I encountered an error: ${
+                  error instanceof Error ? error.message : "Unknown error"
+                }. Please make sure the agent server is running on http://localhost:3001`,
+              }
+            : msg
+        )
+      );
+    } finally {
       setIsGenerating(false);
       scrollToBottom();
-    }, 500);
+    }
   };
 
   return (
@@ -393,7 +188,7 @@ export function GitHubChatbot({
             </SheetTitle>
             <SheetDescription>
               {user
-                ? "Ask questions about the GitHub user's profile, repositories, coding habits, and stress analysis."
+                ? "Ask questions about GitHub repositories, code, issues, and more. Powered by GitHub MCP and OpenAI."
                 : "Please select a GitHub user to start chatting."}
             </SheetDescription>
           </SheetHeader>
@@ -457,7 +252,7 @@ export function GitHubChatbot({
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask about the GitHub profile..."
+                  placeholder="Ask about GitHub repositories, code, issues..."
                   className="flex-1"
                   disabled={!user || isGenerating}
                 />
