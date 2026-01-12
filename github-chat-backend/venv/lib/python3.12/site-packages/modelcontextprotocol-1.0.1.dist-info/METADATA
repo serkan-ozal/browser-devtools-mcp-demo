@@ -1,0 +1,319 @@
+Metadata-Version: 2.4
+Name: modelcontextprotocol
+Version: 1.0.1
+Summary: CLI tool and utilities for scaffolding Model Context Protocol (MCP) projects with enhanced logging
+Project-URL: Homepage, https://github.com/leanmcp/modelcontextprotocol
+Project-URL: Documentation, https://github.com/leanmcp/modelcontextprotocol#readme
+Project-URL: Repository, https://github.com/leanmcp/modelcontextprotocol
+Project-URL: Bug Tracker, https://github.com/leanmcp/modelcontextprotocol/issues
+Author-email: Dheeraj Pai <dheerajmpaicmu@gmail.com>
+License: MIT
+License-File: LICENSE
+Keywords: ai,anthropic,boilerplate,claude,cli,llm,mcp,model-context-protocol,scaffolding
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Software Development :: Code Generators
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Typing :: Typed
+Requires-Python: >=3.10
+Requires-Dist: click>=8.0.0
+Requires-Dist: jinja2>=3.1.0
+Requires-Dist: loguru>=0.7.0
+Requires-Dist: mcp>=1.2.0
+Requires-Dist: posthog>=3.0.0
+Requires-Dist: rich>=13.0.0
+Provides-Extra: dev
+Requires-Dist: black>=23.0.0; extra == 'dev'
+Requires-Dist: build>=1.0.0; extra == 'dev'
+Requires-Dist: mypy>=1.7.0; extra == 'dev'
+Requires-Dist: pytest-asyncio>=0.21.0; extra == 'dev'
+Requires-Dist: pytest>=7.0.0; extra == 'dev'
+Requires-Dist: ruff>=0.1.0; extra == 'dev'
+Requires-Dist: twine>=4.0.0; extra == 'dev'
+Description-Content-Type: text/markdown
+
+# modelcontextprotocol
+
+> CLI tool and utilities for scaffolding Model Context Protocol (MCP) projects with enhanced logging
+
+Create production-ready MCP servers and clients in seconds with built-in **loguru** logging and optional **PostHog** analytics.
+
+## Features
+
+- **Quick Scaffolding** - Generate MCP projects instantly
+- **Enhanced Logging** - Beautiful logs with loguru out of the box
+- **Analytics** - Optional PostHog integration for usage tracking
+- **Beautiful CLI** - Rich terminal UI with helpful prompts
+- **Best Practices** - Templates follow MCP best practices
+- **uvx Compatible** - No installation needed with uvx
+
+## Quick Start
+
+### With uvx (No Installation)
+
+```bash
+# Interactive mode
+uvx modelcontextprotocol create
+
+# Direct creation
+uvx modelcontextprotocol create my-server --type server
+```
+
+### With pip/uv
+
+```bash
+# Install
+pip install modelcontextprotocol
+# or
+uv pip install modelcontextprotocol
+
+# Create a project
+modelcontextprotocol create
+# or
+mcp-create server my-weather-server
+```
+
+## 📖 Usage
+
+### Interactive Mode
+
+Simply run without arguments for an interactive experience:
+
+```bash
+modelcontextprotocol create
+```
+
+You'll be prompted for:
+- Project name
+- Project type (server/client)
+- Template type (basic/advanced)
+- Project path
+
+### Command Line Mode
+
+```bash
+# Create a basic server
+mcp-create server my-server
+
+# Create an advanced server with PostHog
+mcp-create server my-server \
+  --template advanced \
+  --posthog-key YOUR_KEY
+
+# Create a client
+mcp-create client my-client
+
+# Specify custom path
+mcp-create server my-server --path ./projects/my-server
+```
+
+### Environment Variables
+
+```bash
+# PostHog configuration
+export POSTHOG_API_KEY="your-api-key"
+export POSTHOG_HOST="https://app.posthog.com"
+
+# Now create with analytics
+mcp-create server my-server --template advanced
+```
+
+## Generated Project Structure
+
+### Basic Server
+
+```
+my-server/
+├── server.py          # Main server file with loguru
+├── pyproject.toml     # Project configuration
+├── .gitignore         # Git ignore rules
+└── README.md          # Project documentation
+```
+
+### Server Code (Basic)
+
+```python
+from mcp.server.fastmcp import FastMCP
+from loguru import logger
+
+# Configure logging
+logger.add("my-server.log", rotation="10 MB", level="INFO")
+logger.info("Initializing my-server MCP server")
+
+# Initialize server
+mcp = FastMCP("my-server")
+
+@mcp.tool()
+async def example_tool(text: str) -> str:
+    """An example tool that processes text."""
+    logger.info(f"Processing text: {text}")
+    result = f"Processed: {text}"
+    logger.debug(f"Result: {result}")
+    return result
+
+if __name__ == "__main__":
+    logger.info("Starting my-server server")
+    mcp.run()
+```
+
+### Advanced Server Features
+
+The advanced template includes:
+- Error logging to separate file
+- HTTP client integration with httpx
+- PostHog analytics tracking (optional)
+- Graceful shutdown handling
+- Enhanced error tracking
+
+## Templates
+
+### Basic Template
+
+Perfect for simple MCP servers:
+- Loguru logging to file
+- Example tool and resource
+- Clean structure
+
+### Advanced Template
+
+For production servers:
+- Dual logging (info + errors)
+- HTTP client with retry logic
+- PostHog analytics integration
+- Error tracking
+- Graceful shutdown
+
+## Logging with Loguru
+
+All generated projects use **loguru** for beautiful, structured logging:
+
+```python
+logger.info("Information message")
+logger.success("Success message")
+logger.warning("Warning message")
+logger.error("Error message")
+logger.debug("Debug message")
+```
+
+Logs are automatically:
+- Color-coded in terminal
+- Saved to files with rotation
+- Formatted consistently
+- Performance optimized
+
+## PostHog Analytics (Optional)
+
+Track your MCP server usage:
+
+```python
+# Automatically included in advanced template
+posthog.capture(
+    distinct_id="server",
+    event="tool_called",
+    properties={"tool_name": "example_tool"}
+)
+```
+
+## Development
+
+After creating your project:
+
+```bash
+cd my-server
+
+# Create virtual environment
+uv venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# Install dependencies
+uv pip install -e .
+
+# Run your server
+python server.py
+```
+
+## Examples
+
+### Create Weather Server
+
+```bash
+mcp-create server weather-server --template advanced
+cd weather-server
+# Edit server.py to add weather API integration
+python server.py
+```
+
+### Create Database Client
+
+```bash
+mcp-create client db-client
+cd db-client
+# Edit client.py to connect to your MCP server
+python client.py
+```
+
+### With Analytics
+
+```bash
+export POSTHOG_API_KEY="phc_..."
+mcp-create server analytics-server --template advanced
+# PostHog tracking automatically included
+```
+
+## Telemetry
+
+This tool collects **anonymous** usage analytics to improve the user experience. No personal information or project details are collected. 
+
+To disable telemetry:
+```bash
+export MODELCONTEXTPROTOCOL_TELEMETRY=false
+```
+
+See [TELEMETRY.md](TELEMETRY.md) for full details.
+
+## Contributing
+
+Contributions are welcome! This package helps developers:
+- Get started with MCP quickly
+- Follow best practices
+- Include production-ready logging
+- Track usage metrics (anonymous, opt-out available)
+
+## Package Contents
+
+- `cli.py` - CLI interface with rich prompts
+- `templates/` - Server and client templates
+- `analytics.py` - PostHog integration
+- Additional utilities for MCP development
+
+## Resources
+
+- [MCP Documentation](https://modelcontextprotocol.io)
+- [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
+- [Loguru Documentation](https://loguru.readthedocs.io)
+- [PostHog Documentation](https://posthog.com/docs)
+
+## License
+
+MIT License - See LICENSE file for details
+
+## Acknowledgments
+
+- Built on top of the official MCP Python SDK
+- Uses loguru for beautiful logging
+- Inspired by create-react-app and similar scaffolding tools
+
+---
+
+**Made for the MCP community**
+
+```bash
+# Get started now!
+uvx modelcontextprotocol create
+```

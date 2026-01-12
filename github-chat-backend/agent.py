@@ -1,146 +1,136 @@
 import os
-import json
-from openai import OpenAI
+import logging
 from dotenv import load_dotenv
-from github_tools import read_github_repo
+from openai import OpenAI
 
 load_dotenv()
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# --------------------------------------------------
-# 1️⃣ SYSTEM PROMPT → DETERMINISTIC TOOL FORCING
-# --------------------------------------------------
-SYSTEM_PROMPT = """
-You are a GitHub assistant.
 
-RULES:
-- If the user asks about a GitHub repository, github profile, README, commit, file, code, structure or implementation,
-  you MUST call the GitHub tool.
-- NEVER answer GitHub-related questions from memory.
-- Always fetch data from GitHub before answering.
-- If repository information is missing, infer the most likely repository.
-"""
+async def detect_tool_category(message: str) -> str:
+    logger.info(f"[agent.detect_tool_category] Başlangıç - Mesaj: {message[:100]}...")
+    logger.info("[agent.detect_tool_category] → OpenAI API çağrılıyor (kategori tespiti)")
+    
+    resp = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Kullanıcı mesajını oku ve GitHub MCP tool kategorisini seç.\n"
+                    "Sadece şunlardan birini döndür:\n"
+                    "- repositories\n"
+                    "- pull_requests\n"
+                    "- issues\n"
+                    "- users\n"
+                    "- search\n"
+                    "- context\n"
+                    "- actions\n"
+                    "- code_security\n"
+                    "- dependabot\n"
+                    "- discussions\n"
+                    "- gists\n"
+                    "- git\n"
+                    "- labels\n"
+                    "- notifications\n"
+                    "- orgs\n"
+                    "- projects\n"
+                    "- secret_protection\n"
+                    "- security_advisories\n"
+                    "- stargazers\n"
+                    "- none\n"
+                    "Sadece tek kelime cevap ver."
+                ),
+            },
+            {"role": "user", "content": message},
+        ],
+    )
+    
+    category = resp.choices[0].message.content.strip().lower()
+    logger.info(f"[agent.detect_tool_category] ← OpenAI API döndü: category='{category}'")
+    return category
 
-# --------------------------------------------------
-# TOOL DEFINITION (MCP-LIKE)
-# --------------------------------------------------
-tools = [
-    {
+
+def _convert_mcp_tool_to_openai_format(mcp_tool: dict) -> dict:
+    """Convert MCP tool format to OpenAI tool format"""
+    tool_name = mcp_tool.get("name", "")
+    logger.debug(f"[agent._convert_mcp_tool_to_openai_format] Tool dönüştürülüyor: {tool_name}")
+    
+    tool_description = mcp_tool.get("description", "")
+    input_schema = mcp_tool.get("inputSchema", {})
+    
+    return {
         "type": "function",
         "function": {
-            "name": "read_github_repo",
-            "description": "Read files or metadata from a GitHub repository",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "owner": {"type": "string"},
-                    "repo": {"type": "string"},
-                    "path": {"type": "string"},
-                },
-                "required": ["owner", "repo"],
-            },
-        },
+            "name": tool_name,
+            "description": tool_description,
+            "parameters": input_schema
+        }
     }
-]
 
-# --------------------------------------------------
-# 2️⃣ REPO / OWNER / PATH AUTO EXTRACTION
-# --------------------------------------------------
-def extract_repo_info(text: str):
+
+async def select_mcp_tool(message: str, mcp_tools: list):
+    """Use OpenAI to select the appropriate MCP tool based on user message"""
+    logger.info(f"[agent.select_mcp_tool] Başlangıç - {len(mcp_tools)} tool ile")
+    logger.info(f"[agent.select_mcp_tool] Mesaj: {message[:100]}...")
+    
+    # Convert MCP tools to OpenAI format
+    logger.info("[agent.select_mcp_tool] → MCP tool'ları OpenAI formatına dönüştürülüyor")
+    openai_tools = [_convert_mcp_tool_to_openai_format(tool) for tool in mcp_tools]
+    logger.info(f"[agent.select_mcp_tool] ← {len(openai_tools)} tool dönüştürüldü")
+    
+    logger.info("[agent.select_mcp_tool] → OpenAI API çağrılıyor (tool seçimi)")
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
             {
                 "role": "system",
                 "content": (
-                    "Extract GitHub repository information from the message. "
-                    "Return STRICT JSON only. Example:\n"
-                    '{ "owner": "facebook", "repo": "react", "path": "README.md" }\n'
-                    "If path is not mentioned, omit it."
+                    "Sen bir GitHub MCP tool seçici asistansın.\n"
+                    "Kullanıcının mesajını analiz et ve uygun GitHub MCP tool'unu seç.\n"
+                    "Sadece açıkça gerekli olduğunda bir tool çağır.\n"
+                    "Kullanıcıya direkt cevap verme, sadece tool seç."
                 ),
             },
-            {"role": "user", "content": text},
+            {"role": "user", "content": message},
         ],
-    )
-
-    try:
-        return json.loads(response.choices[0].message.content)
-    except Exception:
-        return None
-
-# --------------------------------------------------
-# MAIN AGENT
-# --------------------------------------------------
-async def run_agent(user_message: str):
-    repo_info = extract_repo_info(user_message)
-
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_message},
-        ],
-        tools=tools,
+        tools=openai_tools,
         tool_choice="auto",
     )
+    logger.info("[agent.select_mcp_tool] ← OpenAI API döndü")
 
-    message = response.choices[0].message
+    msg = response.choices[0].message
 
-    # ---- TOOL ÇAĞRISI ----
-    if message.tool_calls:
-        call = message.tool_calls[0]
+    # Check if OpenAI selected a tool
+    if msg.tool_calls and len(msg.tool_calls) > 0:
+        tool_call = msg.tool_calls[0]
+        logger.info(f"[agent.select_mcp_tool] Tool seçildi: {tool_call.function.name}")
+        
+        # Parse arguments - could be string or dict
+        arguments = tool_call.function.arguments
+        if isinstance(arguments, str):
+            import json
+            try:
+                arguments = json.loads(arguments)
+                logger.debug(f"[agent.select_mcp_tool] Arguments JSON parse edildi")
+            except json.JSONDecodeError as e:
+                logger.warning(f"[agent.select_mcp_tool] JSON parse hatası: {e}, boş dict döndürülüyor")
+                arguments = {}
+        
+        result = {
+            "tool_name": tool_call.function.name,
+            "arguments": arguments,
+        }
+        logger.info(f"[agent.select_mcp_tool] Sonuç: {result}")
+        return result
 
-        # 🔒 Güvenli parse (eval YOK)
-        args = json.loads(call.function.arguments)
-        print("🟢 GITHUB TOOL ÇAĞRILDI")
-        print("OWNER:", args.get("owner"))
-        print("REPO:", args.get("repo"))
-        print("PATH:", args.get("path"))
-        # Repo info eksikse ön analizden tamamla
-        if repo_info:
-            args.setdefault("owner", repo_info.get("owner"))
-            args.setdefault("repo", repo_info.get("repo"))
-            args.setdefault("path", repo_info.get("path"))
-
-        result = read_github_repo(
-            owner=args["owner"],
-            repo=args["repo"],
-            path=args.get("path"),
-        )
-
-        followup = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_message},
-                message,
-                {
-                    "role": "tool",
-                    "tool_call_id": call.id,
-                    "content": json.dumps(result),
-                },
-            ],
-        )
-
-        return followup.choices[0].message.content
-
-    return message.content
-
-# --------------------------------------------------
-# 3️⃣ STREAMING (OPTIONAL – CHAT FEEL)
-# --------------------------------------------------
-async def run_agent_stream(user_message: str):
-    stream = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_message},
-        ],
-        stream=True,
-    )
-
-    for event in stream:
-        delta = event.choices[0].delta
-        if delta and delta.content:
-            yield delta.content
+    logger.warning("[agent.select_mcp_tool] Tool seçilmedi, None döndürülüyor")
+    return None
