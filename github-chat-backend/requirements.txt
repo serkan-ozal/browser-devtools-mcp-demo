@@ -1,10 +1,18 @@
-fastapi>=0.104.0
-uvicorn>=0.24.0
-openai>=1.0.0
-python-dotenv>=1.0.0
-pydantic>=2.0.0
-requests>=2.31.0
-langchain>=0.1.0
-langchain-community>=0.0.20
-mcp>=0.1.0
-httpx>=0.25.0
+# LangChain ecosystem
+langchain>=0.3.14
+langchain-core>=0.3.28
+langchain-openai>=0.3.0
+langgraph>=0.2.60
+
+# MCP (Model Context Protocol)
+langchain-mcp-adapters>=0.1.0
+
+# Web server
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+sse-starlette>=2.2.1
+
+# Utilities
+python-dotenv>=1.0.1
+pydantic>=2.10.0
+httpx>=0.28.0

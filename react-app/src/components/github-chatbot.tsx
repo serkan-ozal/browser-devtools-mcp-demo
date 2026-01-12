@@ -41,6 +41,19 @@ interface GitHubChatbotProps {
   onOpenChange?: (open: boolean) => void;
 }
 
+// Generate or retrieve a persistent thread ID
+function getThreadId(userLogin: string | null): string {
+  const storageKey = `github-chat-thread-${userLogin || "anonymous"}`;
+  let threadId = localStorage.getItem(storageKey);
+  if (!threadId) {
+    threadId = `thread-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+    localStorage.setItem(storageKey, threadId);
+  }
+  return threadId;
+}
+
 export function GitHubChatbot({
   user,
   open: controlledOpen,
@@ -62,6 +75,7 @@ export function GitHubChatbot({
   const [input, setInput] = React.useState("");
   const [isGenerating, setIsGenerating] = React.useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const threadIdRef = React.useRef<string>(getThreadId(user?.login || null));
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -72,33 +86,77 @@ export function GitHubChatbot({
   }, [messages]);
 
   React.useEffect(() => {
-    if (user && messages.length === 1) {
-      setMessages([
-        {
-          id: "1",
-          role: "assistant",
-          content: `Hello! I'm your GitHub AI assistant. I can help you search repositories, read code, check issues, and more using GitHub MCP. Ask me anything about GitHub!`,
-          timestamp: new Date(),
-        },
-      ]);
+    if (user) {
+      // Update thread ID when user changes
+      threadIdRef.current = getThreadId(user.login);
+
+      if (messages.length === 1) {
+        setMessages([
+          {
+            id: "1",
+            role: "assistant",
+            content: `Hello! I'm your GitHub AI assistant. I can help you search repositories, read code, check issues, and more using GitHub MCP. Ask me anything about GitHub!`,
+            timestamp: new Date(),
+          },
+        ]);
+      }
     }
-    // Only run when user changes, not when messages change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const sendMessage = async (text: string): Promise<string> => {
-    const res = await fetch("http://localhost:8000/chat", {
+  const sendMessageSSE = async (
+    text: string,
+    onChunk: (content: string) => void
+  ): Promise<void> => {
+    const response = await fetch("http://localhost:3000/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text }),
+      body: JSON.stringify({
+        threadId: threadIdRef.current,
+        message: text,
+      }),
     });
 
-    if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data = await res.json();
-    return data.reply;
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error("No response body");
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.message) {
+              onChunk(data.message);
+            }
+            if (data.error) {
+              throw new Error(data.error);
+            }
+          } catch (e) {
+            console.error("Error parsing SSE data:", e);
+            // Ignore parse errors for non-JSON data lines
+            if (line.slice(6) !== "{}") {
+              console.warn("Failed to parse SSE data:", line);
+            }
+          }
+        }
+      }
+    }
   };
 
   const handleSend = async (e: React.FormEvent) => {
@@ -128,17 +186,33 @@ export function GitHubChatbot({
     setMessages((prev) => [...prev, assistantMessage]);
 
     try {
-      const reply = await sendMessage(question);
+      let fullContent = "";
 
-      // Update assistant message with response
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === assistantMessageId ? { ...msg, content: reply } : msg
-        )
-      );
+      await sendMessageSSE(question, (chunk) => {
+        // SSE returns full message each time, not deltas
+        fullContent = chunk;
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId
+              ? { ...msg, content: fullContent }
+              : msg
+          )
+        );
+        scrollToBottom();
+      });
+
+      // If no content received, show error
+      if (!fullContent) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId
+              ? { ...msg, content: "No response received from the server." }
+              : msg
+          )
+        );
+      }
     } catch (error) {
       console.error("Error sending message:", error);
-      // Update assistant message with error
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantMessageId
@@ -146,7 +220,7 @@ export function GitHubChatbot({
                 ...msg,
                 content: `Sorry, I encountered an error: ${
                   error instanceof Error ? error.message : "Unknown error"
-                }. Please make sure the agent server is running on http://localhost:8000`,
+                }. Please make sure the agent server is running on http://localhost:3000`,
               }
             : msg
         )
@@ -210,50 +284,78 @@ export function GitHubChatbot({
             {user && (
               <div className="flex-1 overflow-y-auto">
                 <div className="flex flex-col gap-4 pb-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex gap-3 ${
-                        message.role === "user"
-                          ? "justify-end"
-                          : "justify-start"
-                      }`}
-                    >
-                      {message.role === "assistant" && (
-                        <Avatar className="size-8 shrink-0">
-                          <AvatarFallback>AI</AvatarFallback>
-                        </Avatar>
-                      )}
+                  {messages.map((message, index) => {
+                    const isLastMessage = index === messages.length - 1;
+                    const showThinking =
+                      message.role === "assistant" &&
+                      !message.content &&
+                      isGenerating &&
+                      isLastMessage;
+
+                    return (
                       <div
-                        className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                        key={message.id}
+                        className={`flex gap-3 ${
                           message.role === "user"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted"
+                            ? "justify-end"
+                            : "justify-start"
                         }`}
                       >
-                        {message.role === "assistant" ? (
-                          <div className="text-sm">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {message.content}
-                            </ReactMarkdown>
-                          </div>
-                        ) : (
-                          <p className="text-sm">{message.content}</p>
+                        {message.role === "assistant" && (
+                          <Avatar className="size-8 shrink-0">
+                            <AvatarFallback>AI</AvatarFallback>
+                          </Avatar>
                         )}
-                        <p className="mt-1 text-xs opacity-70">
-                          {message.timestamp.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
+                        <div
+                          className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                            message.role === "user"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted"
+                          }`}
+                        >
+                          {message.role === "assistant" ? (
+                            <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                              {showThinking ? (
+                                <div className="flex items-center gap-2 py-2">
+                                  <span
+                                    className="font-medium"
+                                    style={{
+                                      background:
+                                        "linear-gradient(90deg, transparent 0%, #333333 20%, #666666 50%, #ffffff 80%, transparent 100%)",
+                                      backgroundSize: "300% 100%",
+                                      WebkitBackgroundClip: "text",
+                                      WebkitTextFillColor: "transparent",
+                                      backgroundClip: "text",
+                                      animation: "gradient 2s linear infinite",
+                                    }}
+                                  >
+                                    Thinking...
+                                  </span>
+                                </div>
+                              ) : (
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                  {message.content || "..."}
+                                </ReactMarkdown>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm">{message.content}</p>
+                          )}
+                          <p className="mt-1 text-xs opacity-70">
+                            {message.timestamp.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                        {message.role === "user" && (
+                          <Avatar className="size-8 shrink-0">
+                            <AvatarFallback>You</AvatarFallback>
+                          </Avatar>
+                        )}
                       </div>
-                      {message.role === "user" && (
-                        <Avatar className="size-8 shrink-0">
-                          <AvatarFallback>You</AvatarFallback>
-                        </Avatar>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                   <div ref={messagesEndRef} />
                 </div>
               </div>

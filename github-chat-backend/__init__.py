@@ -1,3 +1,0 @@
-"""
-GitHub Chat Backend Package
-"""

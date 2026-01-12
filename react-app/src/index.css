@@ -169,3 +169,16 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes gradient {
+  0% {
+    background-position: -200% 0%;
+  }
+  100% {
+    background-position: 200% 0%;
+  }
+}
+
+.animate-gradient {
+  animation: gradient 3s linear infinite;
+}

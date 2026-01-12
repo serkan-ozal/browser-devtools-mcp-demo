@@ -1,6 +1,0 @@
-{
-  "python.analysis.extraPaths": ["${workspaceFolder}/github-chat-backend"],
-  "python.analysis.autoImportCompletions": true,
-  "python.analysis.typeCheckingMode": "basic",
-  "python.defaultInterpreterPath": "${workspaceFolder}/github-chat-backend/venv/bin/python"
-}
