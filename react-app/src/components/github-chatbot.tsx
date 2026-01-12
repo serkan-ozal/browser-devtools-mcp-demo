@@ -1,5 +1,7 @@
 import * as React from "react";
 import { IconMessageCircle, IconSend, IconLoader2 } from "@tabler/icons-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -229,7 +231,15 @@ export function GitHubChatbot({
                             : "bg-muted"
                         }`}
                       >
-                        <p className="text-sm">{message.content}</p>
+                        {message.role === "assistant" ? (
+                          <div className="text-sm">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {message.content}
+                            </ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p className="text-sm">{message.content}</p>
+                        )}
                         <p className="mt-1 text-xs opacity-70">
                           {message.timestamp.toLocaleTimeString([], {
                             hour: "2-digit",
