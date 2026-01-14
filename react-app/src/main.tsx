@@ -11,6 +11,7 @@ import { BranchesPage } from "./pages/BranchesPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { TeamPage } from "./pages/TeamPage";
+import { OrganizationsPage } from "./pages/OrganizationsPage";
 
 // Cache key for localStorage
 const CACHE_KEY = "github_dashboard_cache";
@@ -118,6 +119,10 @@ const router = createBrowserRouter([
       {
         path: "projects",
         element: <ProjectsPage />,
+      },
+      {
+        path: "organizations",
+        element: <OrganizationsPage />,
       },
       {
         path: "team",

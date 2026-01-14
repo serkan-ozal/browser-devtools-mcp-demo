@@ -1,6 +1,4 @@
 """
-GitHub Chatbot Package
-
 A GitHub-aware chatbot using LangChain, LangGraph, OpenAI, and GitHub MCP.
 """
 

@@ -8,6 +8,7 @@ import {
   getStoredUsername,
   getStoredUser,
 } from "@/components/github-username-modal";
+import { CommandMenu } from "@/components/command-menu";
 
 export default function App() {
   const [activeView, setActiveView] = React.useState<"dashboard" | "chat">(
@@ -53,6 +54,7 @@ export default function App() {
       location.pathname === "/branches" ||
       location.pathname === "/analytics" ||
       location.pathname === "/projects" ||
+      location.pathname === "/organizations" ||
       location.pathname === "/team"
     ) {
       setActiveView("dashboard");
@@ -76,16 +78,8 @@ export default function App() {
   };
 
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties
-      }
-    >
+    <SidebarProvider>
       <AppSidebar
-        variant="inset"
         activeView={activeView}
         onChatClick={handleChatClick}
         onDashboardClick={handleDashboardClick}
@@ -93,15 +87,17 @@ export default function App() {
         onAccountClick={handleAccountClick}
       />
       <SidebarInset>
-        <SiteHeader />
-        <Outlet
-          context={{
-            activeView,
-            onViewChange: setActiveView,
-            chatOpen,
-            onChatOpenChange: setChatOpen,
-          }}
-        />
+        <SiteHeader onAccountClick={handleAccountClick} />
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <Outlet
+            context={{
+              activeView,
+              onViewChange: setActiveView,
+              chatOpen,
+              onChatOpenChange: setChatOpen,
+            }}
+          />
+        </div>
       </SidebarInset>
       <GitHubUsernameModal
         open={showUsernameModal}
@@ -109,6 +105,7 @@ export default function App() {
         onSave={handleSaveUsername}
         onSkip={handleSkipUsername}
       />
+      <CommandMenu />
     </SidebarProvider>
   );
 }

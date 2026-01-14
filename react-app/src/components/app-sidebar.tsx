@@ -12,7 +12,6 @@ import {
   IconListDetails,
   IconMessageCircle,
   IconReport,
-  IconSearch,
   IconSettings,
   IconUsers,
 } from "@tabler/icons-react";
@@ -21,7 +20,6 @@ import {
   type StoredGitHubUser,
 } from "@/components/github-username-modal";
 
-import { NavDocuments } from "@/components/nav-documents";
 import { NavMain } from "@/components/nav-main";
 import { NavSecondary } from "@/components/nav-secondary";
 import { NavUser } from "@/components/nav-user";
@@ -71,10 +69,10 @@ const data = {
       key: "analytics",
     },
     {
-      title: "Projects",
-      url: "/projects",
+      title: "Organizations",
+      url: "/organizations",
       icon: IconFolder,
-      key: "projects",
+      key: "organizations",
     },
     {
       title: "Team",
@@ -147,11 +145,6 @@ const data = {
       title: "Get Help",
       url: "#",
       icon: IconHelp,
-    },
-    {
-      title: "Search",
-      url: "#",
-      icon: IconSearch,
     },
   ],
   documents: [
@@ -241,7 +234,6 @@ export function AppSidebar({
           onChatClick={onChatClick}
           onDashboardClick={onDashboardClick}
         />
-        <NavDocuments items={data.documents} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

@@ -1,30 +1,60 @@
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { IconSearch } from "@tabler/icons-react";
+import { useNavigate } from "react-router-dom";
 
-export function SiteHeader() {
+interface SiteHeaderProps {
+  onAccountClick?: () => void;
+}
+
+export function SiteHeader({ onAccountClick }: SiteHeaderProps) {
+  const navigate = useNavigate();
+
   return (
-    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         <SidebarTrigger className="-ml-1" />
-        <Separator
-          orientation="vertical"
-          className="mx-2 data-[orientation=vertical]:h-4"
-        />
-        <h1 className="text-base font-medium">Main Dashboard</h1>
+        <h1 className="text-base font-medium">GitHub Analytics</h1>
         <div className="ml-auto flex items-center gap-2">
-          <ThemeToggle />
-          <Button variant="ghost" asChild size="sm" className="hidden sm:flex">
-            <a
-              href=""
-              rel="noopener noreferrer"
-              target="_blank"
-              className="dark:text-foreground"
-            >
-              Read Me
-            </a>
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden sm:flex items-center gap-2"
+            onClick={() => {
+              const event = new KeyboardEvent("keydown", {
+                key: "k",
+                ctrlKey: navigator.platform.toLowerCase().includes("mac")
+                  ? false
+                  : true,
+                metaKey: navigator.platform.toLowerCase().includes("mac")
+                  ? true
+                  : false,
+                bubbles: true,
+              });
+              document.dispatchEvent(event);
+            }}
+          >
+            <IconSearch className="size-4 shrink-0" />
+            <span className="hidden lg:inline">Search</span>
+            <kbd className="pointer-events-none hidden lg:inline-flex h-5 select-none items-center justify-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+              {navigator.platform.toLowerCase().includes("mac") ? (
+                <>
+                  <span className="text-xs">⌘</span>K
+                </>
+              ) : (
+                <>
+                  <span className="text-xs">Ctrl</span>+K
+                </>
+              )}
+            </kbd>
           </Button>
+          <ThemeToggle />
+          {onAccountClick && (
+            <Button variant="ghost" size="sm" onClick={onAccountClick}>
+              Account
+            </Button>
+          )}
         </div>
       </div>
     </header>

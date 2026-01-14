@@ -1,11 +1,4 @@
-"""
-CLI interface for the GitHub Chatbot.
-
-Provides an interactive command-line interface for chatting with the agent.
-"""
-
 import os
-import asyncio
 from typing import Any
 
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage

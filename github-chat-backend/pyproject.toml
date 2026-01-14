@@ -10,7 +10,7 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.11"
 authors = [
-    {name = "Your Name", email = "your.email@example.com"}
+    {name = "Ercan Er", email = "ercanatilim@gmail.com"}
 ]
 keywords = ["langchain", "langgraph", "openai", "github", "mcp", "chatbot"]
 classifiers = [

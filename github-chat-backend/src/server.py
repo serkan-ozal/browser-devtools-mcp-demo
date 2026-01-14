@@ -1,10 +1,3 @@
-"""
-HTTP Server for the GitHub Chatbot using FastAPI with SSE streaming.
-
-Provides REST API endpoints for chat interactions with Server-Sent Events
-for streaming responses.
-"""
-
 import os
 import json
 from typing import Any, AsyncGenerator
@@ -18,10 +11,7 @@ from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 
 import uvicorn
 
-
-# ----------------------------------------------------------------------
 # Utility Functions
-# ----------------------------------------------------------------------
 
 def content_to_string(content: Any) -> str:
     """Best-effort conversion of message content to text."""
@@ -77,9 +67,7 @@ def extract_assistant_text_from_chunk(chunk: Any) -> str:
     return ""
 
 
-# ----------------------------------------------------------------------
 # Request/Response Models
-# ----------------------------------------------------------------------
 
 class ChatRequest(BaseModel):
     """Chat request body."""
@@ -92,9 +80,7 @@ class HealthResponse(BaseModel):
     status: str = "ok"
 
 
-# ----------------------------------------------------------------------
 # Server Factory
-# ----------------------------------------------------------------------
 
 def create_app(agent: Any) -> FastAPI:
     """
