@@ -1,65 +1,218 @@
 """
-GitHub Chatbot - Main Entry Point
+HTTP Server for the GitHub Chatbot using FastAPI with SSE streaming.
 
-This module serves as the entry point for the GitHub chatbot application.
-It can run in either CLI mode (--cli flag) or HTTP server mode (default).
-
-Usage:
-    python -m src.main          # Start HTTP server
-    python -m src.main --cli    # Start CLI interface
+Provides REST API endpoints for chat interactions with Server-Sent Events
+for streaming responses.
 """
 
-import sys
-import asyncio
-from typing import Optional
+import os
+import json
+from typing import Any, AsyncGenerator
 
-from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from sse_starlette.sse import EventSourceResponse
 
-from .agent import create_agent, AgentHandle
-from .server import start_server_async
-from .cli import run_cli
+from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 
-load_dotenv()
-
-
-def has_arg(name: str) -> bool:
-    """Check if a command line argument exists."""
-    return name in sys.argv
+import uvicorn
 
 
-async def main() -> None:
-    """Main entry point for the application."""
-    # Create the agent
-    handle: AgentHandle = await create_agent()
-    agent = handle.agent
-    close = handle.close
+# ----------------------------------------------------------------------
+# Utility Functions
+# ----------------------------------------------------------------------
 
-    try:
-        if has_arg("--cli"):
-            # Run CLI mode
-            await run_cli(agent)
-        else:
-            # Run HTTP server mode (async)
-            await start_server_async(agent)
-    except asyncio.CancelledError:
-        print("\nShutting down gracefully...")
-    except KeyboardInterrupt:
-        print("\nShutting down...")
-    finally:
-        await close()
+def content_to_string(content: Any) -> str:
+    """Best-effort conversion of message content to text."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "\n".join(content_to_string(c) for c in content)
+    if isinstance(content, dict) and "text" in content:
+        return str(content["text"])
+    return ""
 
 
-def run() -> None:
-    """Synchronous entry point."""
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\nGoodbye!")
-        sys.exit(0)
-    except Exception as err:
-        print(f"Fatal startup error: {err}")
-        sys.exit(1)
+def extract_assistant_text_from_chunk(chunk: Any) -> str:
+    """
+    Extract the latest assistant text delta from a LangGraph stream chunk.
+    Handles nested structure like {'agent': {'messages': [...]}}
+    """
+    if not chunk or not isinstance(chunk, dict):
+        return ""
+
+    # Handle nested structure: {'agent': {'messages': [...]}} or {'pre_extract': ...}
+    msgs = None
+
+    # Try direct messages key
+    if "messages" in chunk:
+        msgs = chunk["messages"]
+    else:
+        # Try nested keys like 'agent', 'tools', etc.
+        for key, value in chunk.items():
+            if isinstance(value, dict) and "messages" in value:
+                msgs = value["messages"]
+                break
+
+    if not isinstance(msgs, list) or len(msgs) == 0:
+        return ""
+
+    last = msgs[-1]
+    if not last:
+        return ""
+
+    # If it's an AIMessage instance
+    if isinstance(last, AIMessage):
+        return content_to_string(last.content).strip()
+
+    # If it's a dict representation
+    if isinstance(last, dict):
+        role = last.get("role", "")
+        if role and role != "assistant":
+            return ""
+        content = last.get("content", "")
+        return content_to_string(content).strip()
+
+    return ""
 
 
-if __name__ == "__main__":
-    run()
+# ----------------------------------------------------------------------
+# Request/Response Models
+# ----------------------------------------------------------------------
+
+class ChatRequest(BaseModel):
+    """Chat request body."""
+    threadId: str
+    message: str
+
+
+class HealthResponse(BaseModel):
+    """Health check response."""
+    status: str = "ok"
+
+
+# ----------------------------------------------------------------------
+# Server Factory
+# ----------------------------------------------------------------------
+
+def create_app(agent: Any) -> FastAPI:
+    """
+    Create and configure the FastAPI application.
+
+    Args:
+        agent: The compiled LangGraph agent.
+
+    Returns:
+        Configured FastAPI application.
+    """
+    app = FastAPI(
+        title="GitHub Chatbot",
+        description="GitHub-aware chatbot using LangChain, LangGraph, and MCP",
+        version="1.0.0",
+    )
+
+    # CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    @app.get("/health", response_model=HealthResponse)
+    async def health_check():
+        """Health check endpoint."""
+        return HealthResponse(status="ok")
+
+    @app.post("/chat")
+    async def chat(request: ChatRequest):
+        """
+        Chat endpoint with SSE streaming.
+
+        Streams assistant responses as Server-Sent Events.
+        """
+        if not request.threadId:
+            raise HTTPException(status_code=400, detail="threadId is required")
+
+        if not request.message:
+            raise HTTPException(status_code=400, detail="message is required")
+
+        async def event_generator() -> AsyncGenerator[dict, None]:
+            """Generate SSE events from agent stream."""
+            try:
+                print(f"[DEBUG] Starting stream for thread: {request.threadId}")
+                print(f"[DEBUG] Message: {request.message}")
+
+                stream = agent.astream(
+                    {"messages": [HumanMessage(content=request.message)]},
+                    config={"configurable": {"thread_id": request.threadId}},
+                )
+
+                async for chunk in stream:
+                    print(f"[DEBUG] Chunk received: {type(chunk)} - {chunk}")
+                    assistant_text = extract_assistant_text_from_chunk(chunk)
+
+                    if assistant_text:
+                        print(f"[DEBUG] Assistant text: {assistant_text}")
+                        yield {
+                            "event": "assistant",
+                            "data": json.dumps({"message": assistant_text}),
+                        }
+
+                print("[DEBUG] Stream completed")
+                yield {
+                    "event": "end",
+                    "data": "{}",
+                }
+
+            except Exception as err:
+                import traceback
+                print(f"[ERROR] Exception: {err}")
+                print(f"[ERROR] Traceback: {traceback.format_exc()}")
+                msg = str(err)
+                yield {
+                    "event": "error",
+                    "data": json.dumps({"error": msg}),
+                }
+
+        return EventSourceResponse(event_generator())
+
+    return app
+
+
+async def start_server_async(agent: Any) -> None:
+    """
+    Start the HTTP server asynchronously.
+
+    Args:
+        agent: The compiled LangGraph agent.
+    """
+    import uvicorn
+
+    app = create_app(agent)
+    port = int(os.getenv("PORT", "3000"))
+
+    print(f"SSE chatbot running at http://localhost:{port}")
+
+    config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
+    server = uvicorn.Server(config)
+    await server.serve()
+
+
+def start_server(agent: Any) -> None:
+    """
+    Start the HTTP server (sync wrapper).
+
+    Args:
+        agent: The compiled LangGraph agent.
+    """
+    import uvicorn
+
+    app = create_app(agent)
+    port = int(os.getenv("PORT", "3000"))
+
+    print(f"SSE chatbot running at http://localhost:{port}")
+
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
