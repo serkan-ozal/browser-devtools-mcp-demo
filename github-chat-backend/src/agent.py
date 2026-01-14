@@ -1,13 +1,3 @@
-"""
-GitHub Chatbot Agent using LangChain, LangGraph, OpenAI, and GitHub MCP.
-
-This module creates a conversational agent that:
-1. Connects to GitHub MCP server for GitHub operations
-2. Uses OpenAI for reasoning and tool calling
-3. Maintains state (activeOrg, activeRepo, activeBranch) across conversations
-4. Uses LangGraph for workflow orchestration with memory
-"""
-
 import os
 import json
 from typing import Any, Optional, Annotated

@@ -14,7 +14,6 @@ import uvicorn
 # Utility Functions
 
 def content_to_string(content: Any) -> str:
-    """Best-effort conversion of message content to text."""
     if isinstance(content, str):
         return content
     if isinstance(content, list):
@@ -70,28 +69,17 @@ def extract_assistant_text_from_chunk(chunk: Any) -> str:
 # Request/Response Models
 
 class ChatRequest(BaseModel):
-    """Chat request body."""
     threadId: str
     message: str
 
 
 class HealthResponse(BaseModel):
-    """Health check response."""
     status: str = "ok"
 
 
 # Server Factory
 
 def create_app(agent: Any) -> FastAPI:
-    """
-    Create and configure the FastAPI application.
-
-    Args:
-        agent: The compiled LangGraph agent.
-
-    Returns:
-        Configured FastAPI application.
-    """
     app = FastAPI(
         title="GitHub Chatbot",
         description="GitHub-aware chatbot using LangChain, LangGraph, and MCP",
@@ -169,12 +157,6 @@ def create_app(agent: Any) -> FastAPI:
 
 
 async def start_server_async(agent: Any) -> None:
-    """
-    Start the HTTP server asynchronously.
-
-    Args:
-        agent: The compiled LangGraph agent.
-    """
     import uvicorn
 
     app = create_app(agent)

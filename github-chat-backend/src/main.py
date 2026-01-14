@@ -39,7 +39,6 @@ async def main() -> None:
     loop = asyncio.get_event_loop()
 
     def signal_handler():
-        """Handle SIGINT and SIGTERM."""
         print("\nShutting down...")
         asyncio.create_task(close())
         loop.stop()
@@ -63,7 +62,6 @@ async def main() -> None:
 
 
 def run() -> None:
-    """Synchronous entry point."""
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
