@@ -140,3 +140,14 @@ vite.config.ts.timestamp-*
 .DS_Store
 
 .idea
+
+# Python virtual environments
+venv/
+env/
+ENV/
+.venv/
+*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
+.python-version
