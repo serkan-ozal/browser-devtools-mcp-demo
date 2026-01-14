@@ -142,6 +142,7 @@ vite.config.ts.timestamp-*
 .idea
 
 # Python virtual environments
+venv
 venv/
 env/
 ENV/
