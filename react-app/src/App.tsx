@@ -9,6 +9,23 @@ import {
   getStoredUser,
 } from "@/components/github-username-modal";
 import { CommandMenu } from "@/components/command-menu";
+import { GitHubChatbot } from "@/components/github-chatbot";
+import { fetchUser } from "@/api/github";
+
+interface GitHubUser {
+  login: string;
+  name: string | null;
+  avatar_url: string;
+  bio: string | null;
+  public_repos: number;
+  followers: number;
+  following: number;
+  location: string | null;
+  blog: string | null;
+  company: string | null;
+  created_at: string;
+  email: string | null;
+}
 
 export default function App() {
   const [activeView, setActiveView] = React.useState<"dashboard" | "chat">(
@@ -16,6 +33,7 @@ export default function App() {
   );
   const [chatOpen, setChatOpen] = React.useState(false);
   const [showUsernameModal, setShowUsernameModal] = React.useState(false);
+  const [chatUser, setChatUser] = React.useState<GitHubUser | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -42,8 +60,36 @@ export default function App() {
         // User data will be loaded when modal saves username
         // For now, just show modal to let user confirm
         setShowUsernameModal(true);
+      } else {
+        // Fetch full user data for chat
+        fetchUser(stored)
+          .then((user) => setChatUser(user))
+          .catch((error) => {
+            console.error("Failed to fetch user data for chat:", error);
+          });
       }
     }
+  }, []);
+
+  // Listen for user updates
+  React.useEffect(() => {
+    const handleUserUpdate = () => {
+      const stored = getStoredUsername();
+      if (stored) {
+        fetchUser(stored)
+          .then((user) => setChatUser(user))
+          .catch((error) => {
+            console.error("Failed to fetch user data for chat:", error);
+          });
+      } else {
+        setChatUser(null);
+      }
+    };
+
+    window.addEventListener("githubUserUpdated", handleUserUpdate);
+    return () => {
+      window.removeEventListener("githubUserUpdated", handleUserUpdate);
+    };
   }, []);
 
   // Update activeView based on current route
@@ -106,6 +152,16 @@ export default function App() {
         onSkip={handleSkipUsername}
       />
       <CommandMenu />
+      <GitHubChatbot
+        user={chatUser}
+        open={chatOpen}
+        onOpenChange={(open) => {
+          setChatOpen(open);
+          if (!open) {
+            setActiveView("dashboard");
+          }
+        }}
+      />
     </SidebarProvider>
   );
 }

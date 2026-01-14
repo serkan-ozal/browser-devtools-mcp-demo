@@ -23,7 +23,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CardAction, CardFooter } from "@/components/ui/card";
 import { ChartAreaInteractive } from "@/components/chart-area-interactive";
 import { RepoTable } from "@/components/repo-table";
-import { GitHubChatbot } from "@/components/github-chatbot";
 import { StressAnalyzer } from "@/components/stress-analyzer";
 
 interface GitHubUser {
@@ -1082,17 +1081,6 @@ export function SearchGithubUser({
           </>
         )
       )}
-
-      <GitHubChatbot
-        user={user || null}
-        open={chatOpen}
-        onOpenChange={(open) => {
-          setChatOpen(open);
-          if (!open) {
-            setActiveView("dashboard");
-          }
-        }}
-      />
     </div>
   );
 }

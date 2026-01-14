@@ -457,7 +457,7 @@ export function AnalyticsPage() {
               <div className="h-[700px] w-auto rounded-lg bg-black relative">
                 {/* Legend */}
                 <div className="absolute top-4 left-4 z-50 rounded-lg border border-white/10 bg-black/70 backdrop-blur px-3 py-2 text-xs text-white">
-                  <div className="font-semibold mb-1">Gösterim</div>
+                  <div className="font-semibold mb-1">Display</div>
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
                       <span
