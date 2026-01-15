@@ -1,5 +1,3 @@
-// GitHub API layer - handles all GitHub REST API v3 calls
-
 const GITHUB_API_BASE = "https://api.github.com";
 
 // Helper function to get GitHub headers with token
