@@ -257,10 +257,7 @@ export function GitHubChatbot({
                         {user.login[0].toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span>
-                      Chat about {user.name || user.login} or Ask anything about
-                      GitHub
-                    </span>
+                    <span>Chat about {user.name || user.login} or ↓</span>
                   </>
                 ) : (
                   "GitHub Profile Chat"
