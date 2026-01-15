@@ -257,7 +257,10 @@ export function GitHubChatbot({
                         {user.login[0].toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span>Chat about {user.name || user.login}</span>
+                    <span>
+                      Chat about {user.name || user.login} or Ask anything about
+                      GitHub
+                    </span>
                   </>
                 ) : (
                   "GitHub Profile Chat"
@@ -266,7 +269,7 @@ export function GitHubChatbot({
             </SheetTitle>
             <SheetDescription>
               {user
-                ? "Ask questions about GitHub repositories, code, issues, and more. Powered by GitHub MCP and OpenAI."
+                ? "Ask questions about GitHub repositories, code, issues, and more."
                 : "Please select a GitHub user to start chatting."}
             </SheetDescription>
           </SheetHeader>
