@@ -1,5 +1,3 @@
-// Bus Factor Analysis - calculates risk based on contributor distribution
-
 import type { Contributor } from "@/api/github";
 
 export interface BusFactorResult {

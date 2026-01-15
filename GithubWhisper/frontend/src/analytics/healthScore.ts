@@ -1,5 +1,3 @@
-// Health Score Calculation - measures repository health based on issues and PRs
-
 import type { Issue, PullRequest } from "@/api/github";
 
 export interface HealthScoreResult {
@@ -20,12 +18,12 @@ export interface HealthScoreResult {
 }
 
 /**
- * Calculate health score for a repository
- * Formula:
- * - (Closed Issues / Total Issues) * 40
- * - (Merged PRs / Total PRs) * 40
- * - (Avg PR Merge Time < 48h ? 20 : 0)
+ * According to the following formula:
+ * - Issue Resolution: (Closed Issues / Total Issues) * 40
+ * - PR Merge Rate: (Merged PRs / Total PRs) * 40
+ * - PR Speed: (Avg PR Merge Time < 48h ? 20 : 0)
  */
+
 export function calculateHealthScore(
   issues: Issue[],
   pullRequests: PullRequest[]
@@ -53,7 +51,8 @@ export function calculateHealthScore(
       return sum + (merged - created);
     }, 0);
 
-    avgMergeTimeHours = totalMergeTime / mergedPRsWithTime.length / (1000 * 60 * 60);
+    avgMergeTimeHours =
+      totalMergeTime / mergedPRsWithTime.length / (1000 * 60 * 60);
   }
 
   // Calculate components
@@ -94,9 +93,6 @@ export function calculateHealthScore(
   };
 }
 
-/**
- * Calculate average health score across all repositories
- */
 export function calculateAverageHealthScore(
   healthScores: HealthScoreResult[]
 ): HealthScoreResult {

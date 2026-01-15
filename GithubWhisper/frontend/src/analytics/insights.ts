@@ -22,9 +22,6 @@ export interface Insight {
   icon: Icon;
 }
 
-/**
- * Generate insights from analytics data
- */
 export function generateInsights(
   busFactors: BusFactorResult[],
   globalBusFactor: BusFactorResult | null,
@@ -42,7 +39,9 @@ export function generateInsights(
       insights.push({
         type: "warning",
         icon: IconAlertTriangle,
-        message: `${highRiskRepos} ${highRiskRepos === 1 ? "repository has" : "repositories have"} a bus factor risk (over 60% commits from single contributor)`,
+        message: `${highRiskRepos} ${
+          highRiskRepos === 1 ? "repository has" : "repositories have"
+        } a bus factor risk (over 60% commits from single contributor)`,
       });
     }
 
@@ -67,21 +66,29 @@ export function generateInsights(
       insights.push({
         type: "error",
         icon: IconCircle,
-        message: "Repository health needs attention - low issue resolution and PR merge rates",
+        message:
+          "Repository health needs attention - low issue resolution and PR merge rates",
       });
     }
 
-    if (globalHealthScore.metrics.avgMergeTimeHours > 0 && globalHealthScore.metrics.avgMergeTimeHours < 48) {
+    if (
+      globalHealthScore.metrics.avgMergeTimeHours > 0 &&
+      globalHealthScore.metrics.avgMergeTimeHours < 48
+    ) {
       insights.push({
         type: "success",
         icon: IconBolt,
-        message: `Average PR merge time is ${Math.round(globalHealthScore.metrics.avgMergeTimeHours)} hours (excellent)`,
+        message: `Average PR merge time is ${Math.round(
+          globalHealthScore.metrics.avgMergeTimeHours
+        )} hours (excellent)`,
       });
     } else if (globalHealthScore.metrics.avgMergeTimeHours > 168) {
       insights.push({
         type: "warning",
         icon: IconClockHour4,
-        message: `Average PR merge time is ${Math.round(globalHealthScore.metrics.avgMergeTimeHours / 24)} days (could be improved)`,
+        message: `Average PR merge time is ${Math.round(
+          globalHealthScore.metrics.avgMergeTimeHours / 24
+        )} days (could be improved)`,
       });
     }
   }
@@ -99,7 +106,9 @@ export function generateInsights(
       insights.push({
         type: "info",
         icon: IconChartBar,
-        message: `${inactiveRepos} ${inactiveRepos === 1 ? "repository is" : "repositories are"} inactive`,
+        message: `${inactiveRepos} ${
+          inactiveRepos === 1 ? "repository is" : "repositories are"
+        } inactive`,
       });
     }
   }

@@ -151,17 +151,13 @@ export interface Commit {
 
 // API Functions
 
-/**
- * Fetch user information
- */
 export async function fetchUser(username: string): Promise<GitHubUser> {
   const response = await fetchWithRetry(`${GITHUB_API_BASE}/users/${username}`);
   return response.json();
 }
 
-/**
- * Fetch all repositories for a user (paginated)
- */
+// Fetch all repositories for a user with pages
+
 export async function fetchUserRepos(username: string): Promise<GitHubRepo[]> {
   const repos: GitHubRepo[] = [];
   let page = 1;

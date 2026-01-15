@@ -1,5 +1,3 @@
-// Commit Statistics - aggregates commit activity across repositories
-
 import type { CommitActivity } from "@/api/github";
 
 export interface CommitTimelineData {
@@ -12,10 +10,6 @@ export interface CommitTimelineData {
   }>;
 }
 
-/**
- * Aggregate commit activity across all repositories
- * Returns timeline data for 3D visualization
- */
 export function aggregateCommitActivity(
   repoCommitData: Array<{
     repoName: string;
@@ -49,34 +43,26 @@ export function aggregateCommitActivity(
   });
 
   // Convert to array and sort by week
-  const timeline = Array.from(weekMap.values()).sort(
-    (a, b) => a.week - b.week
-  );
+  const timeline = Array.from(weekMap.values()).sort((a, b) => a.week - b.week);
 
   return timeline;
 }
 
-/**
- * Calculate repository activity score (0-100)
- * Based on recent commit frequency
- */
+// Calculate repository activity score (0-100)
+
 export function calculateActivityScore(
   activities: CommitActivity[],
   weeksToConsider = 12
 ): number {
   if (activities.length === 0) return 0;
 
-  // Get last N weeks
   const recentActivities = activities
     .slice(-weeksToConsider)
     .filter((a) => a.total > 0);
 
   if (recentActivities.length === 0) return 0;
 
-  const totalCommits = recentActivities.reduce(
-    (sum, a) => sum + a.total,
-    0
-  );
+  const totalCommits = recentActivities.reduce((sum, a) => sum + a.total, 0);
   const avgCommitsPerWeek = totalCommits / recentActivities.length;
 
   // Normalize: 100 commits/week = 100 score, 0 commits = 0 score
@@ -86,9 +72,8 @@ export function calculateActivityScore(
   return Math.round(score);
 }
 
-/**
- * Check if repository is inactive (no commits in last 3 months)
- */
+// Check if repository is inactive (no commits in last 3 months)
+
 export function isInactive(activities: CommitActivity[]): boolean {
   if (activities.length === 0) return true;
 
