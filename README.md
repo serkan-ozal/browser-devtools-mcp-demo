@@ -2,9 +2,9 @@
 
 <div align="center">
 
-<img src="./GithubWhisper/frontend/public/favicon.svg" width="64" height="64" alt="GitHubWhisper Logo" />
+<img src="./GithubWhisper/frontend/public/github_whisper_app_icon.png" width="64" height="64" alt="GitHubWhisper Logo" />
 
-**A comprehensive GitHub analytics platform with AI-powered insights and chatbot**
+**Github Whisper - A comprehensive GitHub analytics platform with AI-powered insights and chatbot**
 
 [![React](https://img.shields.io/badge/React-19.2.0-61DAFB?logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-3178C6?logo=typescript)](https://www.typescriptlang.org/)

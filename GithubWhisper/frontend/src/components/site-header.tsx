@@ -2,20 +2,34 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { IconSearch } from "@tabler/icons-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 interface SiteHeaderProps {
   onAccountClick?: () => void;
 }
 
+function getPageTitle(pathname: string): string {
+  const routeMap: Record<string, string> = {
+    "/": "Dashboard",
+    "/branches": "Branches",
+    "/analytics": "Analytics",
+    "/projects": "Projects",
+    "/organizations": "Organizations",
+    "/team": "Team",
+  };
+
+  return routeMap[pathname] || "GithubWhisper";
+}
+
 export function SiteHeader({ onAccountClick }: SiteHeaderProps) {
-  const navigate = useNavigate();
+  const location = useLocation();
+  const pageTitle = getPageTitle(location.pathname);
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         <SidebarTrigger className="-ml-1" />
-        <h1 className="text-base font-medium">GitHub Analytics</h1>
+        <h1 className="text-base font-medium">{pageTitle}</h1>
         <div className="ml-auto flex items-center gap-2">
           <Button
             variant="outline"

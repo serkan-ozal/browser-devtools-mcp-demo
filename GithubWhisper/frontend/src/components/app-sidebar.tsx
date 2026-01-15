@@ -215,12 +215,12 @@ export function AppSidebar({
             >
               <a href="/">
                 <img
-                  src="/favicon.svg"
-                  alt="GitHub Analytics Logo"
-                  className="!size-5 shrink-0"
+                  src="/github_whisper_app_icon.png"
+                  alt="GithubWhisper Logo"
+                  className="!size-8 shrink-0"
                 />
                 <span className="text-base font-semibold">
-                  GitHub Analytics
+                  GithubWhisper
                 </span>
               </a>
             </SidebarMenuButton>

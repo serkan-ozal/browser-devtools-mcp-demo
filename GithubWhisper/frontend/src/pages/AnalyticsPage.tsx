@@ -145,7 +145,7 @@ export function AnalyticsPage() {
         <Card className="w-full max-w-md">
           <CardHeader className="flex flex-col items-center text-center">
             <IconInfoCircle className="size-16 text-muted-foreground mb-4" />
-            <CardTitle className="text-2xl">GitHub Analytics</CardTitle>
+            <CardTitle className="text-2xl">GithubWhisper</CardTitle>
             <CardDescription>
               Please set your GitHub username to view analytics
             </CardDescription>
@@ -213,7 +213,7 @@ export function AnalyticsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">GitHub Analytics</h1>
+          <h1 className="text-3xl font-bold">GithubWhisper</h1>
           <p className="text-muted-foreground">
             {data.user?.name || username} • {data.repos.length} repositories
           </p>

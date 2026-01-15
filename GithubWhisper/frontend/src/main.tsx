@@ -6,12 +6,12 @@ import "./App.css";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
-import { DashboardPage } from "./pages/DashboardPage";
-import { BranchesPage } from "./pages/BranchesPage";
-import { AnalyticsPage } from "./pages/AnalyticsPage";
-import { ProjectsPage } from "./pages/ProjectsPage";
-import { TeamPage } from "./pages/TeamPage";
-import { OrganizationsPage } from "./pages/OrganizationsPage";
+import { DashboardPage } from "./pages/DashboardPage.tsx";
+import { BranchesPage } from "./pages/BranchesPage.tsx";
+import { AnalyticsPage } from "./pages/AnalyticsPage.tsx";
+import { ProjectsPage } from "./pages/ProjectsPage.tsx";
+import { TeamPage } from "./pages/TeamPage.tsx";
+import { OrganizationsPage } from "./pages/OrganizationsPage.tsx";
 
 // Cache key for localStorage
 const CACHE_KEY = "github_dashboard_cache";
