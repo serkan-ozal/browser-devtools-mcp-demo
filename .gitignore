@@ -149,6 +149,7 @@ ENV/
 .venv/
 *.pyc
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 .python-version
