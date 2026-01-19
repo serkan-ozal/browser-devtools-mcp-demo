@@ -27,7 +27,7 @@ load_dotenv()
 # ----------------------------------------------------------------------
 
 GITHUB_MCP_URL = "https://api.githubcopilot.com/mcp/"
-TOOL_OUTPUT_MAX_CHARS = 20_000
+TOOL_OUTPUT_MAX_CHARS = 200_000
 
 # ----------------------------------------------------------------------
 # State Field Registry (Single Source of Truth)
@@ -327,6 +327,7 @@ async def create_agent() -> AgentHandle:
             "url": GITHUB_MCP_URL,
             "headers": {
                 "Authorization": f"Bearer {github_pat}",
+                "X-MCP-Toolsets": "repos,issues,actions,discussions,issues,notifications,pull_requests,users,projects",
                 "X-MCP-Readonly": "true",
             },
         },
