@@ -14,11 +14,18 @@ import {
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+interface TokenUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  tokenUsage?: TokenUsage;
 }
 
 interface GitHubUser {
@@ -106,7 +113,8 @@ export function GitHubChatbot({
 
   const sendMessageSSE = async (
     text: string,
-    onChunk: (content: string) => void
+    onChunk: (content: string) => void,
+    onTokenUsage: (tokenUsage: TokenUsage) => void
   ): Promise<void> => {
     const response = await fetch("http://localhost:3000/chat", {
       method: "POST",
@@ -143,6 +151,9 @@ export function GitHubChatbot({
             const data = JSON.parse(line.slice(6));
             if (data.message) {
               onChunk(data.message);
+            }
+            if (data.tokenUsage) {
+              onTokenUsage(data.tokenUsage);
             }
             if (data.error) {
               throw new Error(data.error);
@@ -187,19 +198,33 @@ export function GitHubChatbot({
 
     try {
       let fullContent = "";
+      let tokenUsage: TokenUsage | undefined;
 
-      await sendMessageSSE(question, (chunk) => {
-        // SSE returns full message each time, not deltas
-        fullContent = chunk;
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantMessageId
-              ? { ...msg, content: fullContent }
-              : msg
-          )
-        );
-        scrollToBottom();
-      });
+      await sendMessageSSE(
+        question,
+        (chunk) => {
+          // SSE returns full message each time, not deltas
+          fullContent = chunk;
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessageId
+                ? { ...msg, content: fullContent, tokenUsage }
+                : msg
+            )
+          );
+          scrollToBottom();
+        },
+        (usage) => {
+          tokenUsage = usage;
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessageId
+                ? { ...msg, tokenUsage: usage }
+                : msg
+            )
+          );
+        }
+      );
 
       // If no content received, show error
       if (!fullContent) {
@@ -332,21 +357,32 @@ export function GitHubChatbot({
                                     Thinking...
                                   </span>
                                 </div>
-                              ) : (
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                  {message.content || "..."}
-                                </ReactMarkdown>
-                              )}
-                            </div>
                           ) : (
-                            <p className="text-sm">{message.content}</p>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {message.content || "..."}
+                            </ReactMarkdown>
                           )}
-                          <p className="mt-1 text-xs opacity-70">
-                            {message.timestamp.toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                        </div>
+                      ) : (
+                        <p className="text-sm">{message.content}</p>
+                      )}
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <p className="text-xs opacity-70">
+                          {message.timestamp.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                        {message.tokenUsage && message.role === "assistant" && (
+                          <p className="text-xs opacity-60">
+                            {message.tokenUsage.total_tokens.toLocaleString()} tokens
+                            {" "}
+                            <span className="opacity-50">
+                              ({message.tokenUsage.prompt_tokens.toLocaleString()} + {message.tokenUsage.completion_tokens.toLocaleString()})
+                            </span>
                           </p>
+                        )}
+                      </div>
                         </div>
                         {message.role === "user" && (
                           <Avatar className="size-8 shrink-0">

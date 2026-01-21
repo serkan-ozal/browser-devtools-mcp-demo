@@ -2,7 +2,6 @@ import os
 import json
 from typing import Any, Optional, Annotated
 from dataclasses import dataclass
-
 from dotenv import load_dotenv
 
 from langchain_core.messages import (
@@ -19,6 +18,7 @@ from langgraph.checkpoint.memory import MemorySaver
 
 # MCP Adapters for GitHub
 from langchain_mcp_adapters.client import MultiServerMCPClient
+from .modular_skill_loader import load_skills_for_message, get_skill_stats
 
 load_dotenv()
 
@@ -28,6 +28,7 @@ load_dotenv()
 
 GITHUB_MCP_URL = "https://api.githubcopilot.com/mcp/"
 TOOL_OUTPUT_MAX_CHARS = 200_000
+
 
 # ----------------------------------------------------------------------
 # State Field Registry (Single Source of Truth)
@@ -272,8 +273,16 @@ def build_state_repair_prompt(raw_text: str) -> str:
     ])
 
 
-def build_agent_system_prompt(state: dict) -> str:
-    """Build the main agent system prompt."""
+def build_agent_system_prompt(state: dict, user_message: str = "") -> str:
+    """
+    Build the main agent system prompt.
+    
+    DEĞİŞİKLİK: Artık modüler skill yüklüyor - sadece gerekli olanlar!
+    
+    Args:
+        state: Current agent state
+        user_message: Latest user message (for skill selection)
+    """
     keys = get_state_keys()
 
     ctx_parts = []
@@ -289,7 +298,8 @@ def build_agent_system_prompt(state: dict) -> str:
             f"- If {k} is set, do not ask for it again unless the user asks to change/clear it."
         )
 
-    return "\n".join([
+    # Base instructions
+    base_instructions = "\n".join([
         "You are a GitHub-aware assistant with access to GitHub tools.",
         "",
         "Rules:",
@@ -303,6 +313,25 @@ def build_agent_system_prompt(state: dict) -> str:
         "",
         f"Current context: {' '.join(ctx_parts)}",
     ])
+
+    # YENİ: Modüler skill yükleme
+    skill_section = ""
+    if user_message:
+        # Load only required skills for user message
+        skill_content = load_skills_for_message(user_message)
+        
+        if skill_content:
+            skill_section = f"""
+
+<github_mcp_skill>
+{skill_content}
+</github_mcp_skill>
+
+🎯 CRITICAL: Follow the skill guidelines above for token optimization and best practices.
+"""
+    print(f"Skill section: {skill_section}")
+    # Combine
+    return base_instructions + skill_section
 
 
 # ----------------------------------------------------------------------
@@ -376,8 +405,43 @@ async def create_agent() -> AgentHandle:
         activeOrg: Optional[str]
         activeRepo: Optional[str]
         activeBranch: Optional[str]
+        tokenUsage: Optional[dict[str, int]]  # {"prompt_tokens": int, "completion_tokens": int, "total_tokens": int}
 
     # ---------------- Nodes ----------------
+
+    def extract_token_usage(response: Any) -> Optional[dict[str, int]]:
+        """Extract token usage from LLM response."""
+        if not hasattr(response, "response_metadata"):
+            return None
+        
+        metadata = response.response_metadata
+        if not metadata or "token_usage" not in metadata:
+            return None
+        
+        token_usage = metadata["token_usage"]
+        if not isinstance(token_usage, dict):
+            return None
+        
+        return {
+            "prompt_tokens": token_usage.get("prompt_tokens", 0),
+            "completion_tokens": token_usage.get("completion_tokens", 0),
+            "total_tokens": token_usage.get("total_tokens", 0),
+        }
+
+    def merge_token_usage(current: Optional[dict[str, int]], new: Optional[dict[str, int]]) -> dict[str, int]:
+        """Merge two token usage dictionaries."""
+        if not current and not new:
+            return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        if not current:
+            return new or {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        if not new:
+            return current
+        
+        return {
+            "prompt_tokens": current.get("prompt_tokens", 0) + new.get("prompt_tokens", 0),
+            "completion_tokens": current.get("completion_tokens", 0) + new.get("completion_tokens", 0),
+            "total_tokens": current.get("total_tokens", 0) + new.get("total_tokens", 0),
+        }
 
     async def pre_extract_state_node(state: GraphState) -> dict:
         """Pre-extract state updates from user message before agent runs."""
@@ -396,9 +460,13 @@ async def create_agent() -> AgentHandle:
 
         upd = None
         raw_text = ""
+        total_token_usage = state.get("tokenUsage")
 
         # Attempt 1
         resp = await state_extractor.ainvoke([SystemMessage(content=system_text)])
+        token_usage = extract_token_usage(resp)
+        if token_usage:
+            total_token_usage = merge_token_usage(total_token_usage, token_usage)
         raw_text = content_to_string(resp.content)
         parsed = safe_json_parse(raw_text)
 
@@ -414,6 +482,9 @@ async def create_agent() -> AgentHandle:
             ])
 
             resp = await state_extractor.ainvoke([SystemMessage(content=retry_prompt)])
+            token_usage = extract_token_usage(resp)
+            if token_usage:
+                total_token_usage = merge_token_usage(total_token_usage, token_usage)
             raw_text = content_to_string(resp.content)
             parsed = safe_json_parse(raw_text)
 
@@ -424,24 +495,45 @@ async def create_agent() -> AgentHandle:
         if not upd:
             repair_prompt = build_state_repair_prompt(raw_text)
             resp = await state_extractor.ainvoke([SystemMessage(content=repair_prompt)])
+            token_usage = extract_token_usage(resp)
+            if token_usage:
+                total_token_usage = merge_token_usage(total_token_usage, token_usage)
             repaired_text = content_to_string(resp.content)
             parsed = safe_json_parse(repaired_text)
 
             if parsed:
                 upd = parse_state_update(parsed)
 
-        if not upd:
-            return {}
+        result = {}
+        if upd:
+            result.update(apply_state_update(upd))
+        if total_token_usage:
+            result["tokenUsage"] = total_token_usage
 
-        return apply_state_update(upd)
+        return result
 
     async def agent_node(state: GraphState) -> dict:
-        """Main agent reasoning node."""
-        system_text = build_agent_system_prompt(state)
+        """
+        Main agent reasoning node.
+        
+        DEĞİŞİKLİK: User message'ı extract edip skill loader'a geçiriyor!
+        """
+        # Son user mesajını al
+        user_message = get_last_user_text(state["messages"])
+        
+        # System prompt oluştur (modüler skill ile)
+        system_text = build_agent_system_prompt(state, user_message)
         system = SystemMessage(content=system_text)
 
         response = await llm_with_tools.ainvoke([system, *state["messages"]])
-
+        
+        # Token usage tracking
+        token_usage = extract_token_usage(response)
+        current_token_usage = state.get("tokenUsage")
+        if token_usage:
+            merged_usage = merge_token_usage(current_token_usage, token_usage)
+            return {"messages": [response], "tokenUsage": merged_usage}
+        
         return {"messages": [response]}
 
     async def tools_node(state: GraphState) -> dict:

@@ -124,8 +124,21 @@ def create_app(agent: Any) -> FastAPI:
                     config={"configurable": {"thread_id": request.threadId}},
                 )
 
+                token_usage = None
                 async for chunk in stream:
                     print(f"[DEBUG] Chunk received: {type(chunk)} - {chunk}")
+                    
+                    # Extract token usage from chunk if available
+                    # LangGraph chunks can have nested structure
+                    if isinstance(chunk, dict):
+                        # Check direct tokenUsage
+                        if "tokenUsage" in chunk:
+                            token_usage = chunk["tokenUsage"]
+                        # Check nested in node outputs
+                        for key, value in chunk.items():
+                            if isinstance(value, dict) and "tokenUsage" in value:
+                                token_usage = value["tokenUsage"]
+                    
                     assistant_text = extract_assistant_text_from_chunk(chunk)
 
                     if assistant_text:
@@ -135,10 +148,26 @@ def create_app(agent: Any) -> FastAPI:
                             "data": json.dumps({"message": assistant_text}),
                         }
 
+                # Get final state to extract token usage if not found in chunks
+                if not token_usage:
+                    try:
+                        final_state = agent.get_state(
+                            config={"configurable": {"thread_id": request.threadId}}
+                        )
+                        if final_state and hasattr(final_state, "values"):
+                            final_token_usage = final_state.values.get("tokenUsage")
+                            if final_token_usage:
+                                token_usage = final_token_usage
+                    except Exception as e:
+                        print(f"[DEBUG] Could not get final state: {e}")
+
                 print("[DEBUG] Stream completed")
+                end_data = {}
+                if token_usage:
+                    end_data["tokenUsage"] = token_usage
                 yield {
                     "event": "end",
-                    "data": "{}",
+                    "data": json.dumps(end_data),
                 }
 
             except Exception as err:
